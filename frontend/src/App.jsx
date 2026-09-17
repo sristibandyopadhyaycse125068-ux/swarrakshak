@@ -149,53 +149,59 @@ export default function App() {
       <Navbar activePhase={activePhase} setActivePhase={setActivePhase} health={health} />
 
       {/* Dynamic Content Views */}
-      <div className="relative z-10">
+      <div className="relative z-20">
         {/* Phase 1: Resonant Orb Hero */}
         {activePhase === 1 && (
-          <HeroSection onInitialize={() => setActivePhase(2)} />
+          <HeroSection
+            onInitialize={() => setActivePhase(2)}
+            onExploreDashboard={() => setActivePhase(3)}
+          />
         )}
 
         {/* Phase 2: Neural Morph & Telemetry */}
         {activePhase === 2 && (
-          <NeuralTelemetrySection onProceedDashboard={() => setActivePhase(3)} />
+          <NeuralTelemetrySection
+            onProceedDashboard={() => setActivePhase(3)}
+            onEnterDashboard={() => setActivePhase(3)}
+          />
         )}
 
         {/* Phase 3: Operational Risk Dashboard */}
         {activePhase === 3 && (
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10 animate-fade-in">
+          <main className="max-w-[1400px] mx-auto px-6 sm:px-10 py-12 space-y-12 animate-fade-in">
             {/* Dashboard Header Metadata Panel */}
-            <div className="glass-panel p-6 rounded-3xl border border-white/10 backdrop-blur-2xl flex flex-wrap items-center justify-between gap-6 shadow-[0_0_50px_rgba(0,240,255,0.06)]">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-2xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-400">
-                  <Radio className="w-6 h-6 animate-pulse" />
+            <div className="glass-panel p-8 sm:p-10 rounded-3xl border border-white/10 bg-[#080812]/95 backdrop-blur-2xl flex flex-wrap items-center justify-between gap-8 shadow-[0_0_60px_rgba(0,240,255,0.08)]">
+              <div className="flex items-center gap-5">
+                <div className="p-4 rounded-2xl bg-cyan-950/80 border border-cyan-500/40 text-cyan-400 shadow-[0_0_20px_rgba(0,240,255,0.3)]">
+                  <Radio className="w-8 h-8 animate-pulse" />
                 </div>
                 <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-black text-white font-['Space_Grotesk']">
-                      OPERATIONAL RISK RADAR
+                  <div className="flex items-center gap-3">
+                    <h2 className="text-2xl sm:text-3xl font-black text-white font-['Space_Grotesk'] tracking-wide">
+                      OPERATIONAL IMPERSONATION RADAR
                     </h2>
-                    <span className="text-[10px] font-mono px-2.5 py-0.5 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-500/30">
+                    <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-cyan-950 text-cyan-400 border border-cyan-500/40 shadow-[0_0_15px_rgba(0,240,255,0.2)]">
                       SESSION #SR-9982-X
                     </span>
                   </div>
-                  <p className="text-xs text-slate-400 font-mono tracking-wider">
-                    REAL-TIME MULTIMODAL IMPERSONATION ANALYZER
+                  <p className="text-xs sm:text-sm text-slate-300 font-mono tracking-wider mt-1">
+                    REAL-TIME BIOMETRIC SPECTRUM & MULTIMODAL CONTEXTUAL IMPERSONATION ANALYZER
                   </p>
                 </div>
               </div>
 
               <div className="flex flex-wrap items-center gap-4">
-                <div className="px-4 py-2 rounded-2xl bg-[#08080f] border border-white/10 font-mono text-xs text-slate-300 flex items-center gap-2">
+                <div className="px-5 py-2.5 rounded-2xl bg-[#0d0e1c] border border-white/10 font-mono text-xs sm:text-sm text-slate-200 flex items-center gap-2">
                   <Clock className="w-4 h-4 text-cyan-400" />
-                  Latency: <span className="text-cyan-300 font-bold">14ms</span>
+                  LATENCY: <span className="text-cyan-300 font-bold">14ms</span>
                 </div>
-                <div className="px-4 py-2 rounded-2xl bg-[#08080f] border border-white/10 font-mono text-xs text-slate-300 flex items-center gap-2">
+                <div className="px-5 py-2.5 rounded-2xl bg-[#0d0e1c] border border-white/10 font-mono text-xs sm:text-sm text-slate-200 flex items-center gap-2">
                   <Lock className="w-4 h-4 text-emerald-400" />
-                  AES-256 <span className="text-emerald-400 font-bold">Encrypted</span>
+                  AES-256 <span className="text-emerald-400 font-bold">ENCRYPTED</span>
                 </div>
-                <div className="px-4 py-2 rounded-2xl bg-gradient-to-r from-cyan-500/20 to-blue-600/20 border border-cyan-500/30 font-mono text-xs text-cyan-300 flex items-center gap-2">
+                <div className="px-5 py-2.5 rounded-2xl bg-cyan-950/80 border border-cyan-500/40 font-mono text-xs sm:text-sm text-cyan-300 flex items-center gap-2 shadow-[0_0_15px_rgba(0,240,255,0.2)]">
                   <Zap className="w-4 h-4 text-cyan-400 animate-pulse" />
-                  Stream: <span className="font-bold">ACTIVE</span>
+                  STREAM: <span className="font-bold">ACTIVE</span>
                 </div>
               </div>
             </div>
@@ -207,7 +213,7 @@ export default function App() {
             <DemoPresetLoader onSelectPreset={handleSelectPreset} />
 
             {/* Live Upload & Context Risk Form */}
-            <form onSubmit={handleSubmit} className="space-y-10">
+            <form onSubmit={handleSubmit} className="space-y-12">
               <AudioUpload
                 currentFile={currentFile}
                 setCurrentFile={setCurrentFile}
@@ -218,8 +224,8 @@ export default function App() {
               <ContextForm context={context} setContext={setContext} />
 
               {error && (
-                <div className="p-5 rounded-2xl bg-rose-500/20 border border-rose-500/40 text-rose-300 text-sm font-semibold flex items-center gap-3 shadow-lg">
-                  <ShieldAlert className="w-6 h-6 text-rose-400 shrink-0" />
+                <div className="p-6 rounded-3xl bg-rose-950/90 border border-rose-500/60 text-rose-200 text-base font-bold flex items-center gap-4 shadow-[0_0_35px_rgba(244,63,94,0.3)] font-mono">
+                  <ShieldAlert className="w-7 h-7 text-rose-400 shrink-0" />
                   {error}
                 </div>
               )}
@@ -228,22 +234,22 @@ export default function App() {
                 <button
                   type="submit"
                   disabled={loading || !currentFile}
-                  className={`w-full sm:w-auto flex items-center justify-center gap-4 px-10 py-5 rounded-full font-black text-lg transition-all duration-300 shadow-[0_0_30px_rgba(0,240,255,0.3)] ${
+                  className={`w-full sm:w-auto flex items-center justify-center gap-4 px-12 py-6 rounded-full font-black text-lg sm:text-xl font-['Space_Grotesk'] tracking-wider uppercase transition-all duration-300 cursor-pointer shadow-[0_0_40px_rgba(0,240,255,0.4)] ${
                     loading || !currentFile
-                      ? 'bg-slate-900 text-slate-600 cursor-not-allowed border border-white/10'
-                      : 'bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 text-white hover:shadow-[0_0_50px_rgba(0,240,255,0.6)] hover:scale-[1.02] active:scale-95'
+                      ? 'bg-slate-900 text-slate-500 cursor-not-allowed border border-white/10'
+                      : 'bg-gradient-to-r from-cyan-500 via-blue-600 to-purple-600 text-white hover:shadow-[0_0_60px_rgba(0,240,255,0.8)] hover:scale-105 active:scale-95'
                   }`}
                 >
                   {loading ? (
                     <>
-                      <Loader2 className="w-6 h-6 animate-spin text-cyan-200" />
+                      <Loader2 className="w-7 h-7 animate-spin text-cyan-200" />
                       ANALYZING BIOMETRIC FREQUENCY VECTOR...
                     </>
                   ) : (
                     <>
-                      <Activity className="w-6 h-6 text-cyan-200" />
-                      EXECUTE SWARRAKSHAK RISK DETECTOR
-                      <ArrowRight className="w-6 h-6" />
+                      <Activity className="w-7 h-7 text-cyan-200" />
+                      EXECUTE SWARRAKSHAK RISK ENGINE
+                      <ArrowRight className="w-7 h-7" />
                     </>
                   )}
                 </button>
@@ -257,7 +263,7 @@ export default function App() {
 
         {/* Phase 4: Analyst History & Info Overview */}
         {activePhase === 4 && (
-          <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 space-y-10 animate-fade-in">
+          <main className="max-w-[1400px] mx-auto px-6 sm:px-10 py-12 space-y-12 animate-fade-in">
             <AnalystPortal />
             <InfoOverview />
           </main>
@@ -266,4 +272,5 @@ export default function App() {
     </div>
   );
 }
+
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { AlertTriangle, ShieldCheck, ShieldAlert, CheckCircle, Info, Lock, Clock } from 'lucide-react';
+import { AlertTriangle, ShieldCheck, ShieldAlert, CheckCircle, Lock, Clock, Sparkles } from 'lucide-react';
 
 export default function ResultCard({ result }) {
   if (!result) return null;
@@ -19,75 +19,75 @@ export default function ResultCard({ result }) {
 
   const getBadgeClass = (level) => {
     switch (level) {
-      case 'low': return 'badge-low';
-      case 'medium': return 'badge-medium';
-      case 'high': return 'badge-high';
-      default: return 'badge-inconclusive';
+      case 'low': return 'bg-emerald-950/90 text-emerald-400 border-emerald-500/50 shadow-[0_0_15px_rgba(16,185,129,0.3)]';
+      case 'medium': return 'bg-amber-950/90 text-amber-400 border-amber-500/50 shadow-[0_0_15px_rgba(245,158,11,0.3)]';
+      case 'high': return 'bg-rose-950/90 text-rose-400 border-rose-500/50 shadow-[0_0_15px_rgba(244,63,94,0.4)]';
+      default: return 'bg-slate-900 text-slate-400 border-slate-700';
     }
   };
 
   const getScoreColor = (score) => {
-    if (score >= 60) return 'text-rose-500 from-rose-500 to-red-600';
+    if (score >= 60) return 'text-rose-400 from-rose-400 to-red-500';
     if (score >= 30) return 'text-amber-400 from-amber-400 to-yellow-500';
-    return 'text-emerald-400 from-emerald-400 to-teal-500';
+    return 'text-emerald-400 from-emerald-400 to-teal-400';
   };
 
   return (
-    <div className="space-y-6 animate-fadeIn">
+    <div className="space-y-8 animate-fadeIn relative z-20 my-8">
       {/* Risk Gauge Header Panel */}
-      <div className="glass-panel p-6 border-l-4 border-l-cyan-500">
-        <div className="flex flex-wrap items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
+      <div className="glass-panel p-8 sm:p-10 rounded-3xl border border-cyan-500/40 bg-[#080812]/95 backdrop-blur-2xl shadow-[0_0_60px_rgba(0,240,255,0.1)]">
+        <div className="flex flex-wrap items-center justify-between gap-8">
+          <div className="flex flex-wrap items-center gap-8">
             {/* Score Ring */}
-            <div className="relative w-28 h-28 flex items-center justify-center rounded-full bg-slate-900 border-4 border-slate-800 shadow-inner">
+            <div className="relative w-32 h-32 flex items-center justify-center rounded-full bg-[#0d0e1c] border-4 border-cyan-500/40 shadow-[0_0_30px_rgba(0,240,255,0.2)] shrink-0">
               <div className="text-center">
-                <span className={`text-4xl font-extrabold tracking-tight bg-gradient-to-tr ${getScoreColor(risk_score)} bg-clip-text text-transparent`}>
+                <span className={`text-5xl font-black font-['Space_Grotesk'] tracking-tight bg-gradient-to-tr ${getScoreColor(risk_score)} bg-clip-text text-transparent drop-shadow-[0_0_20px_rgba(0,240,255,0.4)]`}>
                   {risk_score}
                 </span>
-                <span className="block text-[10px] text-slate-400 uppercase tracking-widest font-semibold mt-0.5">
-                  / 100 Risk
+                <span className="block text-xs text-slate-400 uppercase tracking-widest font-mono font-bold mt-1">
+                  / 100 RISK
                 </span>
               </div>
             </div>
 
             <div>
-              <div className="flex items-center gap-3">
-                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${getBadgeClass(risk_level)}`}>
+              <div className="flex flex-wrap items-center gap-3">
+                <span className={`px-4 py-1.5 rounded-full text-xs font-mono font-black uppercase tracking-widest border ${getBadgeClass(risk_level)}`}>
                   {risk_level} Impersonation Risk
                 </span>
-                <span className="text-xs text-slate-400 flex items-center gap-1">
-                  <Lock className="w-3 h-3 text-slate-500" />
-                  ID: {event_id}
+                <span className="text-xs font-mono text-cyan-300 flex items-center gap-1.5 bg-cyan-950/60 px-3 py-1 rounded-full border border-cyan-500/30">
+                  <Lock className="w-3.5 h-3.5 text-cyan-400" />
+                  EVENT ID: #{event_id}
                 </span>
               </div>
 
-              <h2 className="text-2xl font-bold text-white mt-2">
-                {risk_level === 'high' && 'High Threat Warning Detected'}
-                {risk_level === 'medium' && 'Elevated Caution Recommended'}
-                {risk_level === 'low' && 'Standard Risk Level Detected'}
-                {risk_level === 'inconclusive' && 'Inconclusive Analysis Evidence'}
+              <h2 className="text-3xl font-black text-white mt-3 font-['Space_Grotesk'] tracking-wide">
+                {risk_level === 'high' && 'HIGH THREAT WARING DETECTED'}
+                {risk_level === 'medium' && 'ELEVATED CAUTION RECOMMENDED'}
+                {risk_level === 'low' && 'AUTHENTIC LOW RISK SIGNAL DETECTED'}
+                {risk_level === 'inconclusive' && 'INCONCLUSIVE EVIDENCE VECTOR'}
               </h2>
 
-              <p className="text-xs text-slate-400 mt-1 flex items-center gap-4">
-                <span>Confidence: <strong className="text-slate-200 capitalize">{confidence_level}</strong></span>
+              <div className="flex flex-wrap items-center gap-4 text-xs font-mono text-slate-300 mt-3">
+                <span>CONFIDENCE: <strong className="text-white uppercase font-bold">{confidence_level}</strong></span>
                 <span>•</span>
-                <span>Synthetic Voice Probability: <strong className="text-cyan-300">{audio_analysis?.synthetic_probability ? `${Math.round(audio_analysis.synthetic_probability * 100)}%` : 'N/A'}</strong></span>
+                <span>SYNTHETIC PROBABILITY: <strong className="text-cyan-300 font-bold">{audio_analysis?.synthetic_probability ? `${Math.round(audio_analysis.synthetic_probability * 100)}%` : 'N/A'}</strong></span>
                 {speaker_analysis?.available && (
                   <>
                     <span>•</span>
-                    <span>Speaker Match: <strong className="text-indigo-300">{Math.round(speaker_analysis.similarity * 100)}%</strong></span>
+                    <span>SPEAKER MATCH: <strong className="text-indigo-300 font-bold">{Math.round(speaker_analysis.similarity * 100)}%</strong></span>
                   </>
                 )}
-              </p>
+              </div>
             </div>
           </div>
 
           <div className="text-right flex flex-col items-end">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-medium">
-              <CheckCircle className="w-3.5 h-3.5" />
-              Privacy Enforced
+            <span className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-500/40 text-xs font-mono font-bold uppercase tracking-wider shadow-[0_0_15px_rgba(16,185,129,0.3)]">
+              <CheckCircle className="w-4 h-4 text-emerald-400" />
+              PRIVACY ENFORCED
             </span>
-            <span className="text-[11px] text-slate-400 mt-1 max-w-[200px] text-right leading-tight">
+            <span className="text-xs font-mono text-slate-400 mt-2 max-w-xs text-right leading-tight">
               {privacy_status}
             </span>
           </div>
@@ -95,40 +95,40 @@ export default function ResultCard({ result }) {
       </div>
 
       {/* Action Recommendation Box */}
-      <div className={`glass-panel p-6 rounded-xl border ${
-        risk_level === 'high' ? 'border-rose-500/30 bg-rose-950/20' : risk_level === 'medium' ? 'border-amber-500/30 bg-amber-950/20' : 'border-emerald-500/30 bg-emerald-950/20'
+      <div className={`glass-panel p-8 rounded-3xl border shadow-xl backdrop-blur-2xl ${
+        risk_level === 'high' ? 'border-rose-500/50 bg-rose-950/40 text-rose-100 shadow-[0_0_40px_rgba(244,63,94,0.15)]' : risk_level === 'medium' ? 'border-amber-500/50 bg-amber-950/40 text-amber-100 shadow-[0_0_40px_rgba(245,158,11,0.15)]' : 'border-emerald-500/50 bg-emerald-950/40 text-emerald-100 shadow-[0_0_40px_rgba(16,185,129,0.15)]'
       }`}>
-        <h3 className="text-sm font-bold uppercase tracking-wider text-slate-200 flex items-center gap-2 mb-2">
-          {risk_level === 'high' ? <ShieldAlert className="w-5 h-5 text-rose-400" /> : <ShieldCheck className="w-5 h-5 text-emerald-400" />}
-          Recommended Protocol Action
+        <h3 className="text-sm font-mono font-black uppercase tracking-widest text-white flex items-center gap-2 mb-3">
+          {risk_level === 'high' ? <ShieldAlert className="w-6 h-6 text-rose-400" /> : <ShieldCheck className="w-6 h-6 text-emerald-400" />}
+          RECOMMENDED PROTOCOL ACTION
         </h3>
-        <p className="text-sm font-medium text-slate-100 leading-relaxed">
+        <p className="text-lg font-bold text-white leading-relaxed font-sans">
           {recommended_action}
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Reasons & Evidence Breakdown */}
-        <div className="glass-panel p-6 space-y-4">
-          <h3 className="text-md font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-            <AlertTriangle className="w-4 h-4 text-amber-400" />
-            Risk Factor Contribution List
+        <div className="glass-panel p-8 rounded-3xl space-y-6 border border-white/10 bg-[#080812]/95 backdrop-blur-2xl">
+          <h3 className="text-xl font-black text-white flex items-center gap-3 border-b border-white/10 pb-4 font-['Space_Grotesk']">
+            <AlertTriangle className="w-5 h-5 text-amber-400" />
+            RISK FACTOR CONTRIBUTION LIST
           </h3>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {reasons?.map((reason, idx) => (
-              <div key={idx} className="p-3 rounded-lg bg-slate-900/60 border border-slate-800 flex items-start justify-between gap-3">
+              <div key={idx} className="p-4 rounded-2xl bg-[#0d0e1c] border border-white/10 flex items-start justify-between gap-4">
                 <div>
-                  <span className="text-[10px] font-bold tracking-wider text-cyan-400 uppercase bg-cyan-950/60 px-2 py-0.5 rounded border border-cyan-800">
+                  <span className="text-xs font-mono font-bold tracking-wider text-cyan-300 uppercase bg-cyan-950/80 px-3 py-1 rounded-full border border-cyan-500/30">
                     {reason.reason_code}
                   </span>
-                  <p className="text-xs text-slate-300 font-medium mt-1.5 leading-snug">
+                  <p className="text-sm text-slate-200 font-medium mt-2 leading-relaxed font-sans">
                     {reason.message}
                   </p>
                 </div>
                 {reason.contribution > 0 && (
-                  <span className="text-xs font-bold text-rose-400 bg-rose-950/50 px-2.5 py-1 rounded-md border border-rose-800/50 whitespace-nowrap">
-                    +{reason.contribution} pts
+                  <span className="text-xs font-mono font-bold text-rose-300 bg-rose-950/80 px-3 py-1.5 rounded-full border border-rose-500/40 whitespace-nowrap shadow-[0_0_10px_rgba(244,63,94,0.3)]">
+                    +{reason.contribution} PTS
                   </span>
                 )}
               </div>
@@ -137,20 +137,20 @@ export default function ResultCard({ result }) {
         </div>
 
         {/* Segment Analysis Timeline */}
-        <div className="glass-panel p-6 space-y-4">
-          <h3 className="text-md font-bold text-white flex items-center gap-2 border-b border-slate-800 pb-3">
-            <Clock className="w-4 h-4 text-cyan-400" />
-            Audio Segment Synthetic Timeline
+        <div className="glass-panel p-8 rounded-3xl space-y-6 border border-white/10 bg-[#080812]/95 backdrop-blur-2xl">
+          <h3 className="text-xl font-black text-white flex items-center gap-3 border-b border-white/10 pb-4 font-['Space_Grotesk']">
+            <Clock className="w-5 h-5 text-cyan-400" />
+            AUDIO SEGMENT SYNTHETIC TIMELINE
           </h3>
 
-          <div className="space-y-3 max-h-72 overflow-y-auto pr-1">
+          <div className="space-y-4 max-h-80 overflow-y-auto pr-2">
             {segments?.map((seg) => {
               const prob = seg.synthetic_probability || 0;
               const probPct = Math.round(prob * 100);
               return (
-                <div key={seg.segment_number} className="p-3 rounded-lg bg-slate-900/50 border border-slate-800">
-                  <div className="flex justify-between items-center text-xs mb-1.5">
-                    <span className="font-semibold text-slate-300">
+                <div key={seg.segment_number} className="p-4 rounded-2xl bg-[#0d0e1c] border border-white/10">
+                  <div className="flex justify-between items-center text-xs font-mono mb-2">
+                    <span className="font-bold text-slate-200">
                       Segment #{seg.segment_number} ({seg.start_seconds}s - {seg.end_seconds}s)
                     </span>
                     <span className={`font-bold ${probPct >= 50 ? 'text-rose-400' : 'text-emerald-400'}`}>
@@ -158,10 +158,10 @@ export default function ResultCard({ result }) {
                     </span>
                   </div>
                   {/* Progress Bar */}
-                  <div className="w-full bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-slate-900 h-3 rounded-full overflow-hidden border border-white/10">
                     <div
                       className={`h-full transition-all duration-500 ${
-                        probPct >= 50 ? 'bg-gradient-to-r from-amber-500 to-rose-500' : 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                        probPct >= 50 ? 'bg-gradient-to-r from-amber-500 to-rose-500 shadow-[0_0_15px_rgba(244,63,94,0.5)]' : 'bg-gradient-to-r from-emerald-500 to-teal-400 shadow-[0_0_15px_rgba(16,185,129,0.5)]'
                       }`}
                       style={{ width: `${probPct}%` }}
                     />
@@ -175,3 +175,4 @@ export default function ResultCard({ result }) {
     </div>
   );
 }
+
