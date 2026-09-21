@@ -89,68 +89,65 @@ const DEMO_SCENARIOS = {
 
 const FINANCIAL_AND_CREDENTIAL_TERMS = [
   // 1. ENGLISH
-  'money', 'cash', 'funds', 'transfer', 'send money', 'wire',
-  'bank details', 'bank account', 'account number', 'ifsc', 'card number',
-  'credit card', 'debit card', 'cvv', 'otp', 'pin', 'password', 'passcode',
+  'money', 'cash', 'funds', 'fund', 'transfer', 'send money', 'wire',
+  'bank details', 'bank account', 'account number', 'account', 'bank', 'ifsc', 'card number', 'card',
+  'credit card', 'credit', 'debit card', 'cvv', 'otp', 'pin', 'password', 'passcode',
   'upi', 'gpay', 'phonepe', 'paytm',
 
-  // 2. HINDI (Devanagari Script - directly matches live Devanagari speech recognition!)
+  // 2. HINDI (Devanagari Script)
   'बैंक', 'अकाउंट', 'पासवर्ड', 'पिन', 'ओटीपी', 'पैसे', 'पैसा', 'रुपये', 'रुपया',
-  'खाता', 'खाता संख्या', 'क्रेडिट कार्ड', 'डेबिट कार्ड', 'सीवीवी', 'ट्रांसफर',
-  'भेजिए', 'भेजो', 'दीजिए', 'दे दो', 'बताइए', 'बोलिए',
+  'खाता', 'खाता संख्या', 'क्रेडिट कार्ड', 'डेबिट कार्ड', 'सीवीवी', 'ट्रांसफर', 'फंड', 'कैश',
 
   // 3. HINDI (Latin Transliteration)
-  'bank account', 'bank details', 'password', 'pin', 'otp', 'paise', 'paisa',
-  'rupaye', 'khata sankhya', 'bhejiye', 'bhejo', 'dijiye', 'de dijiye', 'boliye', 'bataiye',
+  'bank account', 'bank details', 'bank', 'account', 'password', 'pin', 'otp', 'paise', 'paisa',
+  'rupaye', 'rupay', 'khata sankhya', 'khata', 'cvv', 'credit', 'cash', 'transfer',
 
   // 4. BENGALI (Bengali Script)
-  'ব্যাংক', 'অ্যাকাউন্ট', 'পাসওয়ার্ড', 'পিন', 'ওটিপি', 'টাকা', 'পয়সা',
-  'কার্ড', 'ডিটেলস', 'পাঠান', 'পাঠিয়ে দিন', 'দিন', 'দেবেন', 'বলুন', 'খাতা নম্বর',
+  'ব্যাংক', 'ব্যাঙ্ক', 'অ্যাকাউন্ট', 'পাসওয়ার্ড', 'পিন', 'ওটিপি', 'টাকা', 'পয়সা',
+  'কার্ড', 'ডিটেলস', 'খাতা নম্বর', 'টাকা পাঠান',
 
   // 5. BENGALI (Latin Transliteration)
-  'bank details', 'taka', 'poisa', 'pathan', 'pathiye din', 'deben', 'dao', 'din',
-  'doya kore', 'bolun', 'password ta bol'
+  'bank details', 'byank', 'byank account', 'taka', 'poisa', 'account', 'card', 'password', 'otp', 'pin', 'khata'
 ];
 
 // --- NEGATION PATTERNS ACROSS ALL 3 LANGUAGES ---
 const MULTILINGUAL_NEGATIONS = [
   // English Negations
-  /\b(don'?t|do not|never|no need|not asking for|without)\s+(need|want|send|give|share|require)\b/i,
+  /\b(don'?t|do not|never|no need|not asking for|without|stop)\s+(need|want|send|give|share|require|ask|transfer)\b/i,
+  /\b(don'?t|do not|never|no)\s+(send|give|share)\s+(money|cash|funds|otp|pin|password|bank|details|card)\b/i,
   
   // Hindi Negations (Devanagari + Latin)
-  /मत\s*(भेजिए|भेजो|दीजिए|देना|बताइए|बोलिए)/i,
-  /नहीं\s*चाहिए/i,
-  /\b(mat|nahi|na)\s+(bhejo|bhejiye|dijiye|chahiye|batao|boliye)\b/i,
-  /\b(paisa|paise|password|otp|bank)\s+(mat|nahi|na)\b/i,
+  /मत\s*(भेजिए|भेजो|दीजिए|देना|बताइए|बोलिए|दीयो)/i,
+  /नहीं\s*(चाहिए|भेजना|देना)/i,
+  /\b(mat|nahi|na)\s+(bhejo|bhejiye|dijiye|chahiye|batao|boliye|do)\b/i,
+  /\b(paisa|paise|password|otp|bank|rupaye|khata)\s+(mat|nahi|na)\b/i,
 
   // Bengali Negations (Bengali Script + Latin)
   /পাঠাবেন\s*না/i,
   /দেবেন\s*না/i,
   /লাগবে\s*না/i,
   /দরকার\s*নেই/i,
-  /\b(lagbe na|dorkar nei|pathaben na|pathio na|dio na|deben na)\b/i
+  /টাকা\s*পাঠাবেন\s*না/i,
+  /\b(lagbe na|dorkar nei|pathaben na|pathio na|dio na|deben na|taka pathaben na)\b/i,
+  /\b(taka|poisa|password|otp|bank|card)\s+(dio na|deben na|pathio na|pathaben na|lagbe na)\b/i
 ];
 
-const getGenuineHumanTelemetry = () => ({
-  isFinancialRisk: false,
-  category: 'GENUINE_HUMAN',
-  acousticScore: 2,
-  biometricScore: 3,
-  contextScore: 3,
-  overallScore: 8,
-  riskLevel: 'LOW',
-  statusLabel: 'Safe Level',
-  neuralSynthesisLevel: 'LOW',
-  callerIdStatus: 'Verified contact',
-  urgencyStatus: 'Routine',
-  exposureLabel: 'Minimal',
-  analystDisposition: 'VERIFIED & CLEARED',
-  matchedRule: null
-});
+// --- MULTILINGUAL URGENCY DICTIONARY ---
+const MULTILINGUAL_URGENCY_TERMS = [
+  'urgent', 'emergency', 'immediately', 'right now', 'quick', 'asap', 'fast',
+  'जल्दी', 'तुरंत', 'इमरजेंसी', 'अर्जेंट', 'अभी',
+  'জরুরী', 'এখনই', 'তারাতারি', 'জলদি',
+  'jaldi', 'turant', 'abhi', 'ekkhoni', 'taratari', 'joruri'
+];
 
 export const analyzeLiveSpeechIntent = (rawTranscript) => {
   if (!rawTranscript || typeof rawTranscript !== 'string') {
-    return getGenuineHumanTelemetry();
+    return {
+      ...getGenuineHumanTelemetry(),
+      isUrgent: false,
+      urgencyStatus: 'Routine',
+      transactionValue: 'No transaction'
+    };
   }
 
   // Normalize transcript (lowercase for Latin scripts, keep native Unicode scripts intact)
@@ -162,12 +159,15 @@ export const analyzeLiveSpeechIntent = (rawTranscript) => {
   // 2. Check for positive credential / financial trigger terms
   const matchedTerm = FINANCIAL_AND_CREDENTIAL_TERMS.find(term => normalized.includes(term.toLowerCase()));
 
-  // 3. If a financial/credential keyword is present AND not negated -> Trigger 36/100 MEDIUM RISK
+  // 3. Check for urgency tokens
+  const isUrgent = MULTILINGUAL_URGENCY_TERMS.some(term => normalized.includes(term.toLowerCase()));
+
+  // 4. If a financial/credential keyword is present AND not negated -> Trigger 36/100 MEDIUM RISK
   if (matchedTerm && !isNegated) {
     return {
       isFinancialRisk: true,
+      isUrgent,
       category: 'AUTHENTIC_FINANCIAL_REQUEST',
-      // Real human voice cords (2/40 + 4/30), but high context demand (30/30)
       acousticScore: 2,    // 2/40
       biometricScore: 4,   // 4/30
       contextScore: 30,    // 30/30
@@ -176,7 +176,8 @@ export const analyzeLiveSpeechIntent = (rawTranscript) => {
       statusLabel: 'Elevated Risk / Verification Recommended',
       neuralSynthesisLevel: 'LOW',
       callerIdStatus: 'Verified contact',
-      urgencyStatus: 'Time-sensitive',
+      urgencyStatus: isUrgent ? 'Time-sensitive' : 'Routine',
+      transactionValue: 'High value',
       exposureLabel: 'Critical credentials requested',
       analystDisposition: 'FLAGGED FOR REVIEW',
       matchedRule: matchedTerm
@@ -184,7 +185,12 @@ export const analyzeLiveSpeechIntent = (rawTranscript) => {
   }
 
   // Otherwise: Verified safe authentic human speech (8/100)
-  return getGenuineHumanTelemetry();
+  return {
+    ...getGenuineHumanTelemetry(),
+    isUrgent,
+    urgencyStatus: isUrgent ? 'Time-sensitive' : 'Routine',
+    transactionValue: 'No transaction'
+  };
 };
 
 /**
@@ -486,6 +492,15 @@ export default function TelemetryIngestModal({ isOpen, onClose, onRunEngine }) {
     setCurrentFile(null);
     setCurrentAudioUrl(null);
     setLiveTranscript('');
+    setPendingTelemetry(null);
+    setSelectedProfileId(null);
+    setSelectedContext({
+      callerId: 'Unknown caller',
+      urgency: 'Routine',
+      transactionValue: 'No transaction',
+      override: 'No override',
+      claimedRole: 'Customer'
+    });
   };
 
   const handleRemoveReferenceAudio = (e) => {
@@ -915,8 +930,17 @@ const extractAcousticSignature = async (file) => {
       mediaRecorderRef.current = new MediaRecorder(stream);
       audioChunksRef.current = [];
 
-      // Reset transcript
+      // Reset transcript and restore baseline context defaults for live mic session
       setLiveTranscript('');
+      setSelectedProfileId(null);
+      setSelectedContext({
+        callerId: 'Verified contact',
+        urgency: 'Routine',
+        transactionValue: 'No transaction',
+        override: 'No override',
+        claimedRole: 'Customer'
+      });
+
       let spokenWords = '';
 
       // Initialize native Web Speech API
@@ -942,6 +966,25 @@ const extractAcousticSignature = async (file) => {
 
           // Evaluate the speech intent across English, Hindi, and Bengali
           const analysis = analyzeLiveSpeechIntent(currentText);
+
+          // Dynamically update UI Context Indicators (pills) to match live speech analysis
+          if (analysis.isFinancialRisk) {
+            setSelectedContext({
+              callerId: 'Verified contact',
+              urgency: 'Time-sensitive',
+              transactionValue: 'High value',
+              override: 'No override',
+              claimedRole: 'Customer'
+            });
+          } else {
+            setSelectedContext({
+              callerId: 'Verified contact',
+              urgency: 'Routine',
+              transactionValue: 'No transaction',
+              override: 'No override',
+              claimedRole: 'Customer'
+            });
+          }
 
           // Apply to pending telemetry state
           setPendingTelemetry({
@@ -1404,6 +1447,16 @@ const extractAcousticSignature = async (file) => {
                   onChange={(e) => {
                     const updatedText = e.target.value;
                     setLiveTranscript(updatedText);
+                    
+                    if (pendingTelemetry?.category !== 'CLONE') {
+                      const analysis = analyzeLiveSpeechIntent(updatedText);
+                      setSelectedContext(prev => ({
+                        ...prev,
+                        urgency: analysis.urgencyStatus,
+                        transactionValue: analysis.transactionValue
+                      }));
+                    }
+
                     setPendingTelemetry(prev => {
                       const currentCat = prev?.category || 'GENUINE_HUMAN';
                       const updated = recomputeRisk(currentCat, updatedText);
