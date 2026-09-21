@@ -1,8 +1,14 @@
+@import url('https://fonts.googleapis.com/css2?family=Syncopate:wght@400;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 :root {
+  --font-display: 'Syncopate', sans-serif;
   --font-heading: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Space Grotesk', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  --top-nav-height: 64px;
+  --top-nav-offset: 88px; /* 64px navbar + 24px clear gap */
+  --sidebar-width: 256px;
 
   /* Palette: Lemon Cream, Dark Wine, Deep Red Wine, Red Wine Accent */
   --lemon-cream: #FFF7E1;
@@ -18,7 +24,7 @@
 }
 
 body {
-  background-color: var(--dark-wine);
+  background-color: #050203;
   color: var(--lemon-cream);
   font-family: var(--font-body);
   line-height: 1.6;
@@ -95,4 +101,132 @@ h1, h2, h3, h4, h5, h6, .font-heading {
 .animate-wine-pulse {
   animation: winePulse 3.5s ease-in-out infinite;
 }
+
+/* Deep Obsidian Frost (Dashboard Cards & Main Panels) */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.04) !important;
+  backdrop-filter: blur(16px) saturate(160%) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.38) !important;
+  border-left: 1.5px solid rgba(255, 255, 255, 0.22) !important;
+  box-shadow: 
+    0 20px 40px -15px rgba(0, 0, 0, 0.7),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.25),
+    inset 0 -1px 2px 0 rgba(0, 0, 0, 0.5) !important;
+  border-radius: 20px !important;
+}
+
+/* Crimson Jelly / Liquid Glass Buttons */
+.glass-btn-primary {
+  background: linear-gradient(180deg, rgba(244, 63, 94, 0.9) 0%, rgba(159, 18, 57, 0.95) 100%) !important;
+  backdrop-filter: blur(16px) !important;
+  -webkit-backdrop-filter: blur(16px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.35) !important;
+  border-top: 1.5px solid rgba(255, 255, 255, 0.75) !important;
+  box-shadow: 
+    0 8px 24px -2px rgba(225, 29, 72, 0.6),
+    inset 0 2px 4px rgba(255, 255, 255, 0.5),
+    inset 0 -2px 6px rgba(0, 0, 0, 0.45) !important;
+  border-radius: 9999px !important;
+  color: #FFFFFF !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.glass-btn-primary:hover {
+  filter: brightness(1.15) !important;
+  box-shadow: 
+    0 12px 28px 0 rgba(225, 29, 72, 0.75),
+    inset 0 2px 6px 0 rgba(255, 255, 255, 0.7) !important;
+  transform: translateY(-1px);
+}
+
+/* Secondary Obsidian Glass Pills / Inactive Options */
+.glass-btn-secondary {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 255, 255, 0.02) 100%) !important;
+  backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.12) !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.25) !important;
+  border-radius: 9999px !important;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    inset 0 1px 2px rgba(255, 255, 255, 0.15) !important;
+  color: #e4e4e7 !important;
+}
+
+/* Responsive Navbar Rules */
+.nav-pill-container {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+  padding: 8px 24px;
+  border-radius: 9999px;
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.12) 50%, rgba(255, 255, 255, 0.05) 100%);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37), inset 0 1px 1px 0 rgba(255, 255, 255, 0.25);
+  transition: all 0.3s ease;
+}
+
+/* Desktop: Centered capsule */
+@media (min-width: 900px) {
+  .nav-pill-wrapper {
+    position: absolute;
+    left: 50%;
+    transform: translateX(-50%);
+  }
+}
+
+/* Mobile & Tablet: Prevent overlapping the logo/badge */
+@media (max-width: 899px) {
+  .header-container {
+    flex-wrap: wrap !important;
+    gap: 12px !important;
+    padding: 12px 16px !important;
+    justify-content: center !important;
+  }
+  .nav-pill-wrapper {
+    position: static !important;
+    transform: none !important;
+    order: 3; /* Places the pill cleanly below the logo bar on small screens */
+    width: 100%;
+    display: flex;
+    justify-content: center;
+  }
+  .nav-pill-container {
+    gap: 12px !important;
+    padding: 6px 14px !important;
+    overflow-x: auto;
+    max-width: 95vw;
+  }
+  .nav-pill-container button {
+    font-size: 11px !important;
+    white-space: nowrap;
+  }
+  .brand-logo-text {
+    font-size: 12px !important;
+  }
+}
+
+/* Globe Margin Fix on Mobile & 100% Zoom */
+.hero-action-group {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  margin-bottom: clamp(16px, 4vh, 40px);
+}
+
+.globe-canvas-wrapper {
+  position: relative;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  /* Push globe down so top rim never intersects the button */
+  margin-top: clamp(20px, 5vh, 60px);
+}
+
 
