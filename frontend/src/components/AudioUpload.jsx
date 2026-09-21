@@ -1,12 +1,77 @@
-import React, { useState, useRef } from 'react';
-import { Upload, Mic, Square, CheckCircle2, FileAudio, Music, Sparkles } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
 
-export default function AudioUpload({ currentFile, setCurrentFile, referenceFile, setReferenceFile }) {
+export const inferContextFromAudio = (fileOrMetadata) => {
+  const fileName = String(fileOrMetadata?.name || '').toLowerCase();
+
+  // Heuristic matching based on filename, mock NLP transcript, or detected telemetry
+  const isDeliveryOrEcom = fileName.includes('flipkart') || fileName.includes('amazon') || fileName.includes('delivery') || fileName.includes('order');
+  const isFinanceOrOtp = fileName.includes('bank') || fileName.includes('wire') || fileName.includes('transfer') || fileName.includes('otp') || fileName.includes('urgent');
+  const isDeepfakeTest = fileName.includes('spoof') || fileName.includes('fake') || fileName.includes('clone') || fileName.includes('synthetic');
+
+  if (isDeliveryOrEcom) {
+    return {
+      caller_number_status: 'unknown',
+      request_urgency: 'time_sensitive',
+      transaction_value: 'low',
+      procedure_status: 'bypass_requested',
+      caller_relationship: 'vendor',
+      notes: 'Automated E-Commerce / Delivery Dispatch Call'
+    };
+  }
+
+  if (isFinanceOrOtp || isDeepfakeTest) {
+    return {
+      caller_number_status: 'hidden',
+      request_urgency: 'urgent',
+      transaction_value: 'high',
+      procedure_status: 'bypass_requested',
+      caller_relationship: 'executive',
+      notes: 'High Urgency Wire / Executive Impersonation'
+    };
+  }
+
+  // General unknown audio upload defaults to moderate inquiry analysis
+  return {
+    caller_number_status: 'unknown',
+    request_urgency: 'normal',
+    transaction_value: 'low',
+    procedure_status: 'normal',
+    caller_relationship: 'customer',
+    notes: 'Standard External Voice Stream'
+  };
+};
+
+export default function AudioUpload({ currentFile, setCurrentFile, referenceFile, setReferenceFile, setContext, runDetectionWithParams }) {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
+
+  const [dragActiveCurrent, setDragActiveCurrent] = useState(false);
+  const [dragActiveRef, setDragActiveRef] = useState(false);
+
+  // Custom Audio Player State for Current Sample
+  const [currentAudioUrl, setCurrentAudioUrl] = useState(null);
+  const [isPlayingCurrent, setIsPlayingCurrent] = useState(false);
+  const [currentAudioProgress, setCurrentAudioProgress] = useState(0);
+  const [currentDuration, setCurrentDuration] = useState('00:00');
+  const [currentTimeDisplay, setCurrentTimeDisplay] = useState('00:00');
+  const currentAudioRef = useRef(null);
+
+  const [currentFileName, setCurrentFileName] = useState('');
+  const [currentFileSize, setCurrentFileSize] = useState('');
+
+  const processInferredAudioFile = (file) => {
+    setCurrentFile(file);
+    if (setContext) {
+      const inferred = inferContextFromAudio(file);
+      setContext(inferred);
+      if (runDetectionWithParams) {
+        runDetectionWithParams(file, inferred);
+      }
+    }
+  };
 
   const startRecording = async () => {
     try {
@@ -23,7 +88,7 @@ export default function AudioUpload({ currentFile, setCurrentFile, referenceFile
       mediaRecorderRef.current.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
         const file = new File([audioBlob], `mic_recording_${Date.now()}.wav`, { type: 'audio/wav' });
-        setCurrentFile(file);
+        processInferredAudioFile(file);
       };
 
       mediaRecorderRef.current.start();
@@ -47,127 +112,610 @@ export default function AudioUpload({ currentFile, setCurrentFile, referenceFile
     }
   };
 
+  useEffect(() => {
+    if (!currentFile) {
+      if (currentAudioUrl && currentAudioUrl.startsWith('blob:')) {
+        URL.revokeObjectURL(currentAudioUrl);
+      }
+      setCurrentAudioUrl(null);
+      setCurrentFileName('');
+      setCurrentFileSize('');
+      setIsPlayingCurrent(false);
+      setCurrentAudioProgress(0);
+      setCurrentDuration('00:00');
+      setCurrentTimeDisplay('00:00');
+      return;
+    }
+
+    const url = URL.createObjectURL(currentFile);
+    setCurrentAudioUrl(url);
+    setCurrentFileName(currentFile.name || 'FAKE_AUDIO_PHONE.wav');
+    setCurrentFileSize(currentFile.size ? (currentFile.size / (1024 * 1024)).toFixed(2) + ' MB' : '0.12 MB');
+    setIsPlayingCurrent(false);
+    setCurrentAudioProgress(0);
+
+    return () => {
+      if (url && url.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, [currentFile]);
+
+  const handleCurrentFileUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (currentAudioUrl && currentAudioUrl.startsWith('blob:')) {
+      URL.revokeObjectURL(currentAudioUrl);
+    }
+
+    const url = URL.createObjectURL(file);
+    setCurrentAudioUrl(url);
+    setCurrentFileName(file.name);
+    setCurrentFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
+    processInferredAudioFile(file);
+    setIsPlayingCurrent(false);
+    setCurrentAudioProgress(0);
+  };
+
+  const togglePlayCurrent = () => {
+    if (!currentAudioRef.current || !currentAudioUrl) {
+      console.warn("No audio source available to play.");
+      return;
+    }
+    if (isPlayingCurrent) {
+      currentAudioRef.current.pause();
+      setIsPlayingCurrent(false);
+    } else {
+      currentAudioRef.current.play()
+        .then(() => setIsPlayingCurrent(true))
+        .catch((err) => console.error("Audio playback error:", err));
+    }
+  };
+
+  const formatTime = (secs) => {
+    if (isNaN(secs)) return '00:00';
+    const m = Math.floor(secs / 60);
+    const s = Math.floor(secs % 60);
+    return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+  };
+
+  const handleDragCurrent = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActiveCurrent(true);
+    } else if (e.type === 'dragleave') {
+      setDragActiveCurrent(false);
+    }
+  };
+
+  const handleDropCurrent = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActiveCurrent(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const file = e.dataTransfer.files[0];
+      const url = URL.createObjectURL(file);
+      setCurrentAudioUrl(url);
+      setCurrentFileName(file.name);
+      setCurrentFileSize((file.size / (1024 * 1024)).toFixed(2) + ' MB');
+      processInferredAudioFile(file);
+    }
+  };
+
+  const handleDragRef = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.type === 'dragenter' || e.type === 'dragover') {
+      setDragActiveRef(true);
+    } else if (e.type === 'dragleave') {
+      setDragActiveRef(false);
+    }
+  };
+
+  const handleDropRef = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragActiveRef(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      setReferenceFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleReferenceUpload = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      setReferenceFile(e.target.files[0]);
+    }
+  };
+
   return (
-    <div className="space-y-10 my-8 relative z-20">
-      {/* Current Call Audio Container */}
-      <div className="glass-panel-wine p-8 sm:p-10 rounded-3xl space-y-8 border border-[#FFF7E1]/15 bg-[#2C0F12]/95 backdrop-blur-2xl shadow-2xl">
-        <div className="flex flex-wrap items-center justify-between gap-6 pb-6 border-b border-[#FFF7E1]/10">
+    <div style={{ marginTop: '32px', marginBottom: '32px', width: '100%', display: 'flex', flexDirection: 'column', gap: '28px', boxSizing: 'border-box' }}>
+      {/* 1. CURRENT CALL AUDIO SAMPLE (REQUIRED) */}
+      <div className="glass-panel" style={{
+        borderRadius: '18px',
+        padding: '30px 28px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px',
+        width: '100%',
+        boxSizing: 'border-box'
+      }}>
+        {/* Card Header Row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            <h3 className="text-2xl font-black text-[#FFF7E1] flex items-center gap-3 font-['Space_Grotesk'] tracking-wide">
-              <FileAudio className="w-7 h-7 text-[#FFF7E1]" />
-              1. CURRENT CALL AUDIO SAMPLE
-              <span className="text-xs font-mono font-bold text-[#FFF7E1] bg-[#790C12] px-3.5 py-1.5 rounded-full border border-[#FFF7E1]/30 uppercase tracking-widest shadow-lg">
-                REQUIRED FOR ANALYSIS
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ color: '#E11D48', fontSize: '18px' }}>🎧</span>
+              <h3 style={{
+                fontFamily: "'Syncopate', sans-serif",
+                fontSize: '14px',
+                fontWeight: '700',
+                letterSpacing: '0.12em',
+                color: '#FFFFFF',
+                textTransform: 'uppercase',
+                margin: 0
+              }}>
+                CURRENT CALL AUDIO SAMPLE
+              </h3>
+              <span style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: '10px',
+                fontWeight: '700',
+                color: '#E11D48',
+                backgroundColor: 'rgba(225, 29, 72, 0.15)',
+                padding: '3px 8px',
+                borderRadius: '4px',
+                letterSpacing: '0.06em'
+              }}>
+                REQUIRED
               </span>
-            </h3>
-            <p className="text-sm text-[#FFF7E1]/80 font-mono tracking-wider mt-2 uppercase">
-              UPLOAD AUDIO RECORDING OR RECORD LIVE SPEECH VIA BROWSER MICROPHONE (WAV, MP3, M4A UP TO 25MB)
+            </div>
+            <p style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: '13px',
+              color: '#a1a1aa',
+              margin: '6px 0 0 0'
+            }}>
+              Upload the audio sample that should be analyzed for impersonation, tampering, and synthesis indicators.
             </p>
           </div>
 
+          <button
+            type="button"
+            onClick={!isRecording ? startRecording : stopRecording}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              background: isRecording ? 'rgba(225, 29, 72, 0.2)' : 'rgba(255, 255, 255, 0.04)',
+              border: '1px solid rgba(255, 255, 255, 0.1)',
+              padding: '8px 14px',
+              borderRadius: '8px',
+              color: '#f43f5e',
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: '12px',
+              fontWeight: '700',
+              cursor: 'pointer'
+            }}
+          >
+            🎙️ {isRecording ? `Stop (${recordingTime}s)` : 'Record Microphone'}
+          </button>
+        </div>
+
+        {/* Centered Upload Dropzone or Loaded State */}
+        {!currentFile && !currentAudioUrl ? (
+          <div
+            onDragEnter={handleDragCurrent}
+            onDragLeave={handleDragCurrent}
+            onDragOver={handleDragCurrent}
+            onDrop={handleDropCurrent}
+            style={{
+              border: '1px dashed rgba(255, 255, 255, 0.16)',
+              borderRadius: '14px',
+              backgroundColor: dragActiveCurrent ? 'rgba(225, 29, 72, 0.1)' : 'rgba(255, 255, 255, 0.02)',
+              padding: 'clamp(20px, 4vw, 40px) 16px',
+              minHeight: '140px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              width: '100%',
+              boxSizing: 'border-box'
+            }}
+          >
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '14px',
+              color: '#FFFFFF',
+              fontSize: '18px'
+            }}>
+              ⬆
+            </div>
+            <h4 style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: '17px',
+              fontWeight: '700',
+              color: '#FFFFFF',
+              margin: '0 0 6px 0'
+            }}>
+              Add files to upload or browse
+            </h4>
+            <p style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: '12px',
+              color: '#71717a',
+              margin: '0 0 16px 0'
+            }}>
+              Supported formats: WAV, MP3, M4A, FLAC (Up to 25MB)
+            </p>
+            <label style={{
+              backgroundColor: '#9F1239',
+              color: '#FFFFFF',
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: '13px',
+              fontWeight: '700',
+              padding: '10px 22px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'inline-block'
+            }}>
+              Select files
+              <input type="file" accept="audio/*" onChange={handleCurrentFileUpload} style={{ display: 'none' }} />
+            </label>
+          </div>
+        ) : (
+          <div style={{
+            display: 'flex',
+            flexDirection: 'column',
+            gap: '14px',
+            backgroundColor: '#111116',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '14px',
+            padding: '18px 24px',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}>
+            {/* Top Meta Row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                <div style={{
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '8px',
+                  backgroundColor: 'rgba(16, 185, 129, 0.15)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#10b981',
+                  fontSize: '16px'
+                }}>
+                  ✓
+                </div>
+                <div>
+                  <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '15px', fontWeight: '700', color: '#FFFFFF' }}>
+                    {currentFileName || currentFile?.name || 'FAKE_AUDIO_PHONE.wav'}
+                  </div>
+                  <div style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '12px', color: '#a1a1aa', marginTop: '2px' }}>
+                    {currentFileSize || (currentFile?.size ? (currentFile.size / (1024 * 1024)).toFixed(2) + ' MB' : '0.12 MB')} • Uploaded successfully
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px' }}>
+                <label style={{
+                  background: 'rgba(255, 255, 255, 0.06)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '8px',
+                  padding: '6px 14px',
+                  color: '#FFFFFF',
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: '12px',
+                  fontWeight: '700',
+                  cursor: 'pointer'
+                }}>
+                  Replace
+                  <input type="file" accept="audio/*" onChange={handleCurrentFileUpload} style={{ display: 'none' }} />
+                </label>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (currentAudioUrl && currentAudioUrl.startsWith('blob:')) URL.revokeObjectURL(currentAudioUrl);
+                    setCurrentAudioUrl(null);
+                    setCurrentFileName('');
+                    setCurrentFile(null);
+                    setIsPlayingCurrent(false);
+                  }}
+                  style={{
+                    background: 'rgba(244, 63, 94, 0.1)',
+                    border: '1px solid rgba(244, 63, 94, 0.25)',
+                    borderRadius: '8px',
+                    padding: '6px 14px',
+                    color: '#f43f5e',
+                    fontFamily: "'Space Grotesk', sans-serif",
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    cursor: 'pointer'
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+            </div>
+
+            {/* Hidden Native Audio Element */}
+            <audio
+              ref={currentAudioRef}
+              src={currentAudioUrl}
+              onEnded={() => {
+                setIsPlayingCurrent(false);
+                setCurrentAudioProgress(0);
+              }}
+              onTimeUpdate={() => {
+                if (currentAudioRef.current) {
+                  const cur = currentAudioRef.current.currentTime;
+                  const dur = currentAudioRef.current.duration || 1;
+                  setCurrentAudioProgress((cur / dur) * 100);
+                  setCurrentTimeDisplay(formatTime(cur));
+                }
+              }}
+              onLoadedMetadata={() => {
+                if (currentAudioRef.current) {
+                  setCurrentDuration(formatTime(currentAudioRef.current.duration));
+                }
+              }}
+            />
+
+            {/* Custom High-Contrast Dark Audio Player Bar */}
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '16px',
+              backgroundColor: '#0a0a0d',
+              border: '1px solid rgba(255, 255, 255, 0.08)',
+              borderRadius: '10px',
+              padding: '10px 18px',
+              width: '100%',
+              boxSizing: 'border-box'
+            }}>
+              <button
+                type="button"
+                onClick={togglePlayCurrent}
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  backgroundColor: '#E11D48',
+                  border: 'none',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#FFFFFF',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  flexShrink: 0
+                }}
+              >
+                {isPlayingCurrent ? '❚❚' : '▶'}
+              </button>
+
+              <div
+                onClick={(e) => {
+                  if (!currentAudioRef.current || !currentAudioRef.current.duration) return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const clickX = e.clientX - rect.left;
+                  const pct = clickX / rect.width;
+                  currentAudioRef.current.currentTime = pct * currentAudioRef.current.duration;
+                }}
+                style={{
+                  flex: 1,
+                  height: '6px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.1)',
+                  borderRadius: '3px',
+                  cursor: 'pointer',
+                  position: 'relative'
+                }}
+              >
+                <div style={{
+                  width: `${currentAudioProgress}%`,
+                  height: '100%',
+                  backgroundColor: '#E11D48',
+                  borderRadius: '3px',
+                  transition: 'width 0.1s linear'
+                }} />
+              </div>
+
+              <span style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '12px', color: '#a1a1aa', flexShrink: 0 }}>
+                {currentTimeDisplay} / {currentDuration}
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* 2. TRUSTED REFERENCE VOICE SAMPLE (OPTIONAL) */}
+      <div className="glass-panel" style={{
+        borderRadius: '18px',
+        padding: '30px 28px',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '20px',
+        width: '100%',
+        boxSizing: 'border-box'
+      }}>
+        {/* Card Header Row */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', flexWrap: 'wrap', gap: '12px' }}>
           <div>
-            {!isRecording ? (
-              <button
-                type="button"
-                onClick={startRecording}
-                className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-[#790C12] hover:bg-[#6B1E23] text-[#FFF7E1] font-mono font-black text-sm uppercase tracking-wider shadow-lg hover:scale-105 active:scale-95 transition-all duration-300 border border-[#FFF7E1]/20 cursor-pointer"
-              >
-                <Mic className="w-5 h-5 text-[#FFF7E1] animate-pulse" />
-                Record Microphone Stream
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={stopRecording}
-                className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-[#6B1E23] text-[#FFF7E1] font-mono font-black text-sm uppercase tracking-wider animate-pulse shadow-xl border border-[#790C12] cursor-pointer"
-              >
-                <Square className="w-5 h-5 fill-current" />
-                Stop Recording ({recordingTime}s)
-              </button>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ color: '#f43f5e', fontSize: '18px' }}>🎵</span>
+              <h3 style={{
+                fontFamily: "'Syncopate', sans-serif",
+                fontSize: '14px',
+                fontWeight: '700',
+                letterSpacing: '0.12em',
+                color: '#FFFFFF',
+                textTransform: 'uppercase',
+                margin: 0
+              }}>
+                TRUSTED REFERENCE VOICE SAMPLE
+              </h3>
+              <span style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: '10px',
+                fontWeight: '700',
+                color: '#a1a1aa',
+                backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                padding: '3px 8px',
+                borderRadius: '4px',
+                letterSpacing: '0.06em'
+              }}>
+                OPTIONAL
+              </span>
+            </div>
+            <p style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: '13px',
+              color: '#a1a1aa',
+              margin: '6px 0 0 0'
+            }}>
+              Upload a verified voice sample to improve biometric comparison accuracy.
+            </p>
           </div>
         </div>
 
-        <div className="border-2 border-dashed border-[#790C12] hover:border-[#FFF7E1] rounded-3xl p-10 sm:p-14 text-center transition-all duration-300 bg-[#6B1E23]/20 hover:bg-[#6B1E23]/40 group cursor-pointer shadow-inner">
-          <input
-            type="file"
-            accept="audio/*,.wav,.mp3,.m4a"
-            onChange={(e) => setCurrentFile(e.target.files[0] || null)}
-            className="hidden"
-            id="current-audio-input"
-          />
-          <label htmlFor="current-audio-input" className="cursor-pointer block space-y-4">
-            <Upload className="w-14 h-14 text-[#FFF7E1] mx-auto group-hover:scale-110 transition-all duration-300 drop-shadow-[0_0_15px_rgba(121,12,18,0.8)]" />
-            {currentFile ? (
-              <div className="p-6 rounded-2xl bg-[#6B1E23] border border-[#790C12] max-w-lg mx-auto shadow-xl">
-                <div className="flex items-center justify-center gap-3 text-[#FFF7E1] font-black text-base font-mono">
-                  <CheckCircle2 className="w-6 h-6 text-[#FFF7E1]" />
-                  <span>{currentFile.name}</span>
-                </div>
-                <p className="text-xs font-mono text-[#FFF7E1]/80 mt-2 uppercase">
-                  SAMPLE LOADED • READY FOR ANALYSIS ({(currentFile.size / (1024 * 1024)).toFixed(2)} MB)
-                </p>
-              </div>
-            ) : (
-              <div>
-                <p className="text-xl font-black text-[#FFF7E1] group-hover:text-[#FFF7E1] transition-colors font-['Space_Grotesk'] tracking-wide">
-                  CLICK TO CHOOSE AUDIO RECORDING FILE OR DRAG & DROP HERE
-                </p>
-                <p className="text-xs text-[#FFF7E1]/70 font-mono tracking-wider mt-2 uppercase">
-                  SUPPORTED AUDIO FORMATS: WAV, MP3, M4A, FLAC, OGG
-                </p>
-              </div>
-            )}
-          </label>
-
-          {currentFile && (
-            <div className="mt-8 pt-6 border-t border-[#FFF7E1]/10 flex justify-center">
-              <audio controls src={URL.createObjectURL(currentFile)} className="h-12 w-full max-w-xl rounded-2xl shadow-lg border border-[#790C12]" />
+        {/* Centered Upload Dropzone or Loaded State */}
+        {!referenceFile ? (
+          <div
+            onDragEnter={handleDragRef}
+            onDragLeave={handleDragRef}
+            onDragOver={handleDragRef}
+            onDrop={handleDropRef}
+            style={{
+              border: '1px dashed rgba(255, 255, 255, 0.16)',
+              borderRadius: '14px',
+              backgroundColor: dragActiveRef ? 'rgba(225, 29, 72, 0.1)' : 'rgba(255, 255, 255, 0.02)',
+              padding: 'clamp(20px, 4vw, 40px) 16px',
+              minHeight: '140px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              textAlign: 'center',
+              width: '100%',
+              boxSizing: 'border-box'
+            }}
+          >
+            <div style={{
+              width: '44px',
+              height: '44px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              marginBottom: '14px',
+              color: '#FFFFFF',
+              fontSize: '18px'
+            }}>
+              ✨
             </div>
-          )}
-        </div>
-      </div>
-
-      {/* Optional Reference Voice Audio Container */}
-      <div className="glass-panel-wine p-8 sm:p-10 rounded-3xl space-y-6 border border-[#FFF7E1]/15 bg-[#2C0F12]/95 backdrop-blur-2xl shadow-2xl">
-        <div className="pb-4 border-b border-[#FFF7E1]/10">
-          <h3 className="text-2xl font-black text-[#FFF7E1] flex items-center gap-3 font-['Space_Grotesk'] tracking-wide">
-            <Music className="w-7 h-7 text-[#FFF7E1]" />
-            2. TRUSTED REFERENCE VOICE SAMPLE
-            <span className="text-xs font-mono font-bold text-[#FFF7E1] bg-[#6B1E23] px-3.5 py-1.5 rounded-full uppercase tracking-widest border border-[#790C12]">
-              OPTIONAL COMPARISON
-            </span>
-          </h3>
-          <p className="text-sm text-[#FFF7E1]/80 font-mono tracking-wider mt-2 uppercase">
-            UPLOAD CONSENTED REFERENCE AUDIO OF CLAIMED IDENTITY (E.G. EXECUTIVE VOICEPRINT) FOR SPEAKER COMPARISON
-          </p>
-        </div>
-
-        <div className="border-2 border-dashed border-[#FFF7E1]/20 hover:border-[#FFF7E1] rounded-3xl p-8 text-center transition-all duration-300 bg-[#6B1E23]/20 hover:bg-[#6B1E23]/40 cursor-pointer">
-          <input
-            type="file"
-            accept="audio/*,.wav,.mp3,.m4a"
-            onChange={(e) => setReferenceFile(e.target.files[0] || null)}
-            className="hidden"
-            id="ref-audio-input"
-          />
-          <label htmlFor="ref-audio-input" className="cursor-pointer block">
-            {referenceFile ? (
-              <div className="p-4 rounded-2xl bg-[#6B1E23] border border-[#790C12] max-w-lg mx-auto flex items-center justify-center gap-3 text-[#FFF7E1] font-black text-base font-mono">
-                <CheckCircle2 className="w-6 h-6 text-[#FFF7E1]" />
-                <span>{referenceFile.name} ({(referenceFile.size / (1024 * 1024)).toFixed(2)} MB)</span>
+            <h4 style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: '17px',
+              fontWeight: '700',
+              color: '#FFFFFF',
+              margin: '0 0 6px 0'
+            }}>
+              Add files to upload or browse
+            </h4>
+            <p style={{
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: '12px',
+              color: '#71717a',
+              margin: '0 0 16px 0'
+            }}>
+              Optional consented reference voice print sample
+            </p>
+            <label style={{
+              backgroundColor: 'rgba(255, 255, 255, 0.08)',
+              border: '1px solid rgba(255, 255, 255, 0.15)',
+              color: '#FFFFFF',
+              fontFamily: "'Space Grotesk', sans-serif",
+              fontSize: '13px',
+              fontWeight: '700',
+              padding: '10px 22px',
+              borderRadius: '8px',
+              cursor: 'pointer',
+              display: 'inline-block'
+            }}>
+              Select files
+              <input type="file" accept="audio/*" onChange={handleReferenceUpload} style={{ display: 'none' }} />
+            </label>
+          </div>
+        ) : (
+          <div style={{
+            backgroundColor: '#0D0D11',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '14px',
+            padding: '20px 24px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: '16px',
+            width: '100%',
+            boxSizing: 'border-box'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+              <div style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '10px',
+                backgroundColor: 'rgba(16, 185, 129, 0.12)',
+                color: '#10b981',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                fontWeight: 'bold'
+              }}>
+                ✓
               </div>
-            ) : (
-              <div className="flex items-center justify-center gap-3 text-[#FFF7E1] hover:text-[#FFF7E1] font-bold text-base font-mono transition-colors uppercase">
-                <Sparkles className="w-5 h-5 text-[#FFF7E1]" />
-                <span>+ CLICK TO UPLOAD OPTIONAL REFERENCE VOICE PRINT SAMPLE</span>
+              <div>
+                <h4 style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '15px', fontWeight: '700', color: '#FFFFFF', margin: 0 }}>
+                  {referenceFile.name}
+                </h4>
+                <p style={{ fontFamily: "'Space Grotesk', sans-serif", fontSize: '12px', color: '#a1a1aa', margin: '3px 0 0 0' }}>
+                  {(referenceFile.size / (1024 * 1024)).toFixed(2)} MB • Reference loaded
+                </p>
               </div>
-            )}
-          </label>
-        </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setReferenceFile(null)}
+              style={{
+                backgroundColor: 'rgba(244, 63, 94, 0.12)',
+                border: '1px solid rgba(244, 63, 94, 0.25)',
+                padding: '8px 14px',
+                borderRadius: '8px',
+                fontSize: '12px',
+                fontWeight: '700',
+                color: '#f43f5e',
+                cursor: 'pointer',
+                fontFamily: "'Space Grotesk', sans-serif"
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
 }
-
-

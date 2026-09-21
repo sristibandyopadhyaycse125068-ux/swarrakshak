@@ -1,165 +1,284 @@
 import React from 'react';
-import { PhoneCall, AlertTriangle, DollarSign, ShieldAlert, UserCheck } from 'lucide-react';
 
-export default function ContextForm({ context, setContext }) {
-  const handleChange = (field, val) => {
-    setContext((prev) => ({ ...prev, [field]: val }));
+export default function ContextForm({ context, setContext, handleRunDetection }) {
+  const valueToDisplayMap = {
+    callerId: {
+      known: 'Verified contact',
+      executive: 'Known executive',
+      unknown: 'Unknown caller',
+      hidden: 'Impersonation suspected',
+    },
+    urgency: {
+      normal: 'Routine',
+      time_sensitive: 'Time-sensitive',
+      urgent: 'Urgent',
+      critical: 'Critical',
+    },
+    transactionValue: {
+      none: 'No transaction',
+      low: 'Low value',
+      medium: 'High value',
+      high: 'Critical value',
+    },
+    protocolOverride: {
+      normal: 'No override',
+      bypass_requested: 'Requested override',
+      partial: 'Partial override',
+      full: 'Full override',
+    },
+    roleRelationship: {
+      employee: 'Employee',
+      executive: 'Executive',
+      vendor: 'Vendor',
+      customer: 'Customer',
+      unknown: 'Unknown entity',
+    }
+  };
+
+  const displayToValueMap = {
+    callerId: {
+      'Verified contact': 'known',
+      'Known executive': 'executive',
+      'Unknown caller': 'unknown',
+      'Impersonation suspected': 'hidden',
+    },
+    urgency: {
+      'Routine': 'normal',
+      'Time-sensitive': 'time_sensitive',
+      'Urgent': 'urgent',
+      'Critical': 'critical',
+    },
+    transactionValue: {
+      'No transaction': 'none',
+      'Low value': 'low',
+      'High value': 'medium',
+      'Critical value': 'high',
+    },
+    protocolOverride: {
+      'No override': 'normal',
+      'Requested override': 'bypass_requested',
+      'Partial override': 'partial',
+      'Full override': 'full',
+    },
+    roleRelationship: {
+      'Employee': 'employee',
+      'Executive': 'executive',
+      'Vendor': 'vendor',
+      'Customer': 'customer',
+      'Unknown entity': 'unknown',
+    }
+  };
+
+  const fieldKeyMap = {
+    callerId: 'caller_number_status',
+    urgency: 'request_urgency',
+    transactionValue: 'transaction_value',
+    protocolOverride: 'procedure_status',
+    roleRelationship: 'caller_relationship',
+  };
+
+  const handleContextChange = (key, opt) => {
+    const backendField = fieldKeyMap[key];
+    const backendVal = displayToValueMap[key]?.[opt] || opt;
+    if (setContext && backendField) {
+      setContext((prev) => ({ ...prev, [backendField]: backendVal }));
+    }
+  };
+
+  const contextSignals = {
+    callerId: valueToDisplayMap.callerId[context?.caller_number_status] || 'Unknown caller',
+    urgency: valueToDisplayMap.urgency[context?.request_urgency] || 'Urgent',
+    transactionValue: valueToDisplayMap.transactionValue[context?.transaction_value] || 'Critical value',
+    protocolOverride: valueToDisplayMap.protocolOverride[context?.procedure_status] || 'Requested override',
+    roleRelationship: valueToDisplayMap.roleRelationship[context?.caller_relationship] || 'Executive',
   };
 
   return (
-    <div className="glass-panel-wine p-8 sm:p-10 rounded-3xl space-y-10 my-8 border border-[#FFF7E1]/15 bg-[#2C0F12]/95 backdrop-blur-2xl shadow-2xl relative z-20">
-      <div className="pb-6 border-b border-[#FFF7E1]/10">
-        <h3 className="text-2xl font-black text-[#FFF7E1] flex items-center gap-3 font-['Space_Grotesk'] tracking-wide uppercase">
-          <PhoneCall className="w-7 h-7 text-[#FFF7E1]" />
-          3. CALL CONTEXT & BEHAVIORAL INDICATORS
-        </h3>
-        <p className="text-sm text-[#FFF7E1]/80 font-mono tracking-wider mt-2 uppercase">
-          CONFIGURE METADATA SIGNAL INDICATORS TO POWER MULTIMODAL CONTEXTUAL RISK WEIGHTING
+    <div className="glass-panel" style={{
+      marginTop: '36px',
+      marginBottom: '40px',
+      borderRadius: '20px',
+      padding: '36px 32px',
+      width: '100%',
+      boxSizing: 'border-box'
+    }}>
+      {/* Section Header: Centered & Spaced */}
+      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+          <span style={{ color: '#E11D48', fontSize: '22px' }}>📞</span>
+          <h3 style={{
+            fontFamily: "'Syncopate', sans-serif",
+            fontSize: '16px',
+            fontWeight: '700',
+            letterSpacing: '0.14em',
+            color: '#FFFFFF',
+            textTransform: 'uppercase',
+            margin: 0
+          }}>
+            CALL CONTEXT & BEHAVIORAL INDICATORS
+          </h3>
+        </div>
+        <p style={{
+          fontFamily: "'Space Grotesk', sans-serif",
+          fontSize: '14px',
+          fontWeight: '500',
+          color: '#a1a1aa',
+          marginTop: '8px',
+          marginBottom: 0
+        }}>
+          Add contextual signals to improve the accuracy of the risk assessment.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
-        {/* Caller Number Status */}
-        <div className="space-y-4">
-          <label className="block text-xs font-mono font-bold text-[#FFF7E1] uppercase tracking-widest flex items-center gap-2">
-            <PhoneCall className="w-4 h-4 text-[#FFF7E1]" />
-            1. Caller Identification Status
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { id: 'known', label: 'Known Contact' },
-              { id: 'unknown', label: 'Unknown Number' },
-              { id: 'hidden', label: 'Hidden / Spoofed' },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => handleChange('caller_number_status', opt.id)}
-                className={`py-4 px-4 rounded-2xl text-xs sm:text-sm font-mono font-bold transition-all duration-300 border cursor-pointer ${
-                  context.caller_number_status === opt.id
-                    ? 'bg-[#790C12] border-[#FFF7E1] text-[#FFF7E1] shadow-[0_0_20px_rgba(121,12,18,0.7)] scale-105'
-                    : 'bg-[#6B1E23]/40 border-[#FFF7E1]/15 text-[#FFF7E1]/70 hover:border-[#FFF7E1]/50 hover:bg-[#6B1E23]/70'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Sub-Cards Grid: 2-3 Columns with Generous Gaps */}
+      <div style={{
+        display: 'grid',
+        gridTemplateColumns: 'repeat(auto-fit, minmax(clamp(260px, 28vw, 340px), 1fr))',
+        gap: '18px',
+        width: '100%',
+        boxSizing: 'border-box'
+      }}>
+        {[
+          {
+            key: 'callerId',
+            icon: '👤',
+            title: 'Caller Identification Status',
+            desc: 'Select appropriate telemetry tag',
+            options: ['Verified contact', 'Known executive', 'Unknown caller', 'Impersonation suspected'],
+            current: contextSignals?.callerId || 'Unknown caller'
+          },
+          {
+            key: 'urgency',
+            icon: '⚠️',
+            title: 'Request Time Urgency',
+            desc: 'Select the level of time pressure',
+            options: ['Routine', 'Time-sensitive', 'Urgent', 'Critical'],
+            current: contextSignals?.urgency || 'Urgent'
+          },
+          {
+            key: 'transactionValue',
+            icon: '💲',
+            title: 'Financial Transaction Value',
+            desc: 'Select transaction exposure level',
+            options: ['No transaction', 'Low value', 'High value', 'Critical value'],
+            current: contextSignals?.transactionValue || 'Critical value'
+          },
+          {
+            key: 'protocolOverride',
+            icon: '🛡️',
+            title: 'Authorization Protocol Override',
+            desc: 'Identify whether standard controls were bypassed',
+            options: ['No override', 'Requested override', 'Partial override', 'Full override'],
+            current: contextSignals?.protocolOverride || 'Requested override'
+          },
+          {
+            key: 'roleRelationship',
+            icon: '👥',
+            title: 'Claimed Identity / Role Relationship',
+            desc: "Select the caller's claimed relationship",
+            options: ['Employee', 'Executive', 'Vendor', 'Customer', 'Unknown entity'],
+            current: contextSignals?.roleRelationship || 'Executive'
+          }
+        ].map((card) => (
+          <div
+            key={card.key}
+            className="glass-panel"
+            style={{
+              borderRadius: '16px',
+              padding: '24px 20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              textAlign: 'center',
+              boxSizing: 'border-box',
+              minHeight: '190px',
+              justifyContent: 'space-between'
+            }}
+          >
+            {/* Header with Icon, Title, and Description */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginBottom: '6px' }}>
+                <span style={{ fontSize: '15px' }}>{card.icon}</span>
+                <h4 style={{
+                  fontFamily: "'Space Grotesk', sans-serif",
+                  fontSize: '15px',
+                  fontWeight: '700',
+                  color: '#FFFFFF',
+                  margin: 0,
+                  letterSpacing: '0.02em'
+                }}>
+                  {card.title}
+                </h4>
+              </div>
+              <p style={{
+                fontFamily: "'Space Grotesk', sans-serif",
+                fontSize: '12px',
+                color: '#71717a',
+                margin: '0 0 16px 0'
+              }}>
+                {card.desc}
+              </p>
+            </div>
 
-        {/* Request Urgency */}
-        <div className="space-y-4">
-          <label className="block text-xs font-mono font-bold text-[#FFF7E1] uppercase tracking-widest flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 text-[#FFF7E1]" />
-            2. Request Time Urgency
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[
-              { id: 'normal', label: 'Standard Timeline' },
-              { id: 'urgent', label: 'Urgent / High Pressure' },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => handleChange('request_urgency', opt.id)}
-                className={`py-4 px-4 rounded-2xl text-xs sm:text-sm font-mono font-bold transition-all duration-300 border cursor-pointer ${
-                  context.request_urgency === opt.id
-                    ? 'bg-[#790C12] border-[#FFF7E1] text-[#FFF7E1] shadow-[0_0_20px_rgba(121,12,18,0.7)] scale-105'
-                    : 'bg-[#6B1E23]/40 border-[#FFF7E1]/15 text-[#FFF7E1]/70 hover:border-[#FFF7E1]/50 hover:bg-[#6B1E23]/70'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
+            {/* Centered Pill Buttons */}
+            <div style={{
+              display: 'flex',
+              flexWrap: 'wrap',
+              justifyContent: 'center',
+              gap: '8px',
+              width: '100%'
+            }}>
+              {card.options.map((opt) => {
+                const isSelected = card.current === opt;
 
-        {/* Transaction Value */}
-        <div className="space-y-4">
-          <label className="block text-xs font-mono font-bold text-[#FFF7E1] uppercase tracking-widest flex items-center gap-2">
-            <DollarSign className="w-4 h-4 text-[#FFF7E1]" />
-            3. Financial Transaction Value
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            {[
-              { id: 'low', label: 'Low (< $10k)' },
-              { id: 'medium', label: 'Medium ($10k-$100k)' },
-              { id: 'high', label: 'High (> $100k)' },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => handleChange('transaction_value', opt.id)}
-                className={`py-4 px-4 rounded-2xl text-xs sm:text-sm font-mono font-bold transition-all duration-300 border cursor-pointer ${
-                  context.transaction_value === opt.id
-                    ? 'bg-[#790C12] border-[#FFF7E1] text-[#FFF7E1] shadow-[0_0_20px_rgba(121,12,18,0.7)] scale-105'
-                    : 'bg-[#6B1E23]/40 border-[#FFF7E1]/15 text-[#FFF7E1]/70 hover:border-[#FFF7E1]/50 hover:bg-[#6B1E23]/70'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    onClick={() => handleContextChange && handleContextChange(card.key, opt)}
+                    className={isSelected ? "glass-btn-primary" : "glass-btn-secondary"}
+                    style={{
+                      fontFamily: "'Space Grotesk', sans-serif",
+                      fontSize: '12px',
+                      fontWeight: '700',
+                      padding: '8px 14px',
+                      borderRadius: '20px',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease-in-out'
+                    }}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
+        ))}
+      </div>
 
-        {/* Procedure Status */}
-        <div className="space-y-4">
-          <label className="block text-xs font-mono font-bold text-[#FFF7E1] uppercase tracking-widest flex items-center gap-2">
-            <ShieldAlert className="w-4 h-4 text-[#FFF7E1]" />
-            4. Authorization Protocol Override
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            {[
-              { id: 'normal', label: 'Standard Approval' },
-              { id: 'bypass_requested', label: 'Bypass Requested' },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => handleChange('procedure_status', opt.id)}
-                className={`py-4 px-4 rounded-2xl text-xs sm:text-sm font-mono font-bold transition-all duration-300 border cursor-pointer ${
-                  context.procedure_status === opt.id
-                    ? 'bg-[#790C12] border-[#FFF7E1] text-[#FFF7E1] shadow-[0_0_20px_rgba(121,12,18,0.7)] scale-105'
-                    : 'bg-[#6B1E23]/40 border-[#FFF7E1]/15 text-[#FFF7E1]/70 hover:border-[#FFF7E1]/50 hover:bg-[#6B1E23]/70'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Caller Relationship */}
-        <div className="lg:col-span-2 space-y-4">
-          <label className="block text-xs font-mono font-bold text-[#FFF7E1] uppercase tracking-widest flex items-center gap-2">
-            <UserCheck className="w-4 h-4 text-[#FFF7E1]" />
-            5. Claimed Identity / Role Relationship
-          </label>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {[
-              { id: 'executive', label: 'CFO / Executive' },
-              { id: 'vendor', label: 'Supplier / Vendor' },
-              { id: 'customer', label: 'Bank Customer' },
-              { id: 'unknown', label: 'Unknown Caller' },
-            ].map((opt) => (
-              <button
-                key={opt.id}
-                type="button"
-                onClick={() => handleChange('caller_relationship', opt.id)}
-                className={`py-4 px-4 rounded-2xl text-xs sm:text-sm font-mono font-bold transition-all duration-300 border cursor-pointer ${
-                  context.caller_relationship === opt.id
-                    ? 'bg-[#790C12] border-[#FFF7E1] text-[#FFF7E1] shadow-[0_0_20px_rgba(121,12,18,0.7)] scale-105'
-                    : 'bg-[#6B1E23]/40 border-[#FFF7E1]/15 text-[#FFF7E1]/70 hover:border-[#FFF7E1]/50 hover:bg-[#6B1E23]/70'
-                }`}
-              >
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
+      {/* Centered Primary Run Engine Button */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: '36px' }}>
+        <button
+          type={handleRunDetection ? 'submit' : 'button'}
+          onClick={handleRunDetection || (() => {})}
+          className="glass-btn-primary"
+          style={{
+            display: 'inline-flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            padding: '16px 40px',
+            fontFamily: "'Syncopate', sans-serif",
+            fontSize: '13px',
+            fontWeight: '700',
+            letterSpacing: '0.12em',
+            cursor: 'pointer',
+            textTransform: 'uppercase'
+          }}
+        >
+          <span>⚡</span> RUN RISK DETECTION ENGINE <span>⚡</span>
+        </button>
       </div>
     </div>
   );
 }
-
-

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import LoadingPage from './components/LoadingPage';
+import CrimsonGlobeViewport from './components/3d/CrimsonGlobeViewport';
 import Navbar from './components/Navbar';
 import HeroSection from './components/HeroSection';
 import TopologyVisualization from './components/TopologyVisualization';
@@ -10,13 +11,15 @@ import DemoPresetLoader from './components/DemoPresetLoader';
 import AnalystPortal from './components/AnalystPortal';
 import InfoOverview from './components/InfoOverview';
 import AudioVisualizer from './components/AudioVisualizer';
+import BentoRiskDashboard from './components/BentoRiskDashboard';
+import TelemetryIngestModal from './components/TelemetryIngestModal';
 import { checkHealth, submitAnalysis } from './services/api';
-import { ShieldCheck, Loader2, ArrowRight, Activity, Radio, Lock, Zap, Clock, ShieldAlert } from 'lucide-react';
 
 export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('topology'); // topology | dashboard | analyst | overview
   const [health, setHealth] = useState(null);
+  const [isTelemetryModalOpen, setIsTelemetryModalOpen] = useState(false);
 
   // Form State
   const [currentFile, setCurrentFile] = useState(null);
@@ -68,11 +71,11 @@ export default function App() {
     for (let i = 0; i < numSamples; i++) {
       const t = i / sr;
       let sample = 0;
-      if (presetType === 'cloned_high_risk') {
+      if (presetType === 'cloned_high_risk' || presetType === 'B') {
         const voice = Math.sin(2 * Math.PI * 160 * t);
         const noise = (Math.random() * 2 - 1) * 0.45;
         sample = (voice * 0.5 + noise) * 12000;
-      } else if (presetType === 'suspicious_context') {
+      } else if (presetType === 'suspicious_context' || presetType === 'C') {
         const voice = Math.sin(2 * Math.PI * 180 * t) + 0.3 * Math.sin(2 * Math.PI * 360 * t);
         const noise = (Math.random() * 2 - 1) * 0.15;
         sample = (voice * 0.7 + noise) * 10000;
@@ -99,11 +102,11 @@ export default function App() {
       if (referenceFile) {
         formData.append('reference_audio', referenceFile);
       }
-      formData.append('caller_number_status', contextObj.caller_number_status);
-      formData.append('request_urgency', contextObj.request_urgency);
-      formData.append('transaction_value', contextObj.transaction_value);
-      formData.append('procedure_status', contextObj.procedure_status);
-      formData.append('caller_relationship', contextObj.caller_relationship);
+      formData.append('caller_number_status', contextObj.caller_number_status || 'known');
+      formData.append('request_urgency', contextObj.request_urgency || 'normal');
+      formData.append('transaction_value', contextObj.transaction_value || 'low');
+      formData.append('procedure_status', contextObj.procedure_status || 'normal');
+      formData.append('caller_relationship', contextObj.caller_relationship || 'customer');
       if (contextObj.notes) {
         formData.append('notes', contextObj.notes);
       }
@@ -132,6 +135,58 @@ export default function App() {
     runDetectionWithParams(demoFile, preset.context);
   };
 
+  const handleRunEngineFromModal = (payload) => {
+    setActiveTab('dashboard');
+
+    // If direct metrics object received from TelemetryIngestModal
+    if (payload && payload.overallScore !== undefined) {
+      const mockResult = {
+        risk_score: payload.overallScore,
+        risk_level: payload.overallScore >= 70 ? 'high' : (payload.overallScore >= 40 ? 'medium' : 'low'),
+        speaker_analysis: { similarity: payload.voiceMatchPct / 100 },
+        audio_analysis: { synthetic_probability: (100 - payload.acousticIntegrityPct) / 100 },
+        reasons: [
+          { message: payload.decisionText }
+        ]
+      };
+      setResult(mockResult);
+      return;
+    }
+
+    const { scenario, customFile, referenceFile: refFile, context: ctxObj } = payload || {};
+
+    if (scenario) {
+      const presetId = scenario === 'A' ? 'genuine' : (scenario === 'B' ? 'cloned_high_risk' : 'suspicious_context');
+      const presetContext = scenario === 'A'
+        ? { caller_number_status: 'known', request_urgency: 'normal', transaction_value: 'low', procedure_status: 'normal', caller_relationship: 'executive' }
+        : (scenario === 'B'
+          ? { caller_number_status: 'hidden', request_urgency: 'urgent', transaction_value: 'high', procedure_status: 'bypass_requested', caller_relationship: 'executive' }
+          : { caller_number_status: 'unknown', request_urgency: 'time_sensitive', transaction_value: 'medium', procedure_status: 'bypass_requested', caller_relationship: 'vendor' });
+
+      setContext(presetContext);
+      const blob = createSyntheticWavBlob(scenario);
+      const demoFile = new File([blob], `sample_scenario_${scenario.toLowerCase()}.wav`, { type: 'audio/wav' });
+      setCurrentFile(demoFile);
+      runDetectionWithParams(demoFile, presetContext);
+    } else {
+      if (customFile) setCurrentFile(customFile);
+      if (refFile) setReferenceFile(refFile);
+      if (ctxObj) {
+        const mappedContext = {
+          caller_number_status: ctxObj.callerId === 'Impersonation suspected' ? 'hidden' : (ctxObj.callerId === 'Unknown caller' ? 'unknown' : 'known'),
+          request_urgency: ctxObj.urgency === 'Urgent' || ctxObj.urgency === 'Critical' ? 'urgent' : 'normal',
+          transaction_value: ctxObj.transactionValue === 'High value' || ctxObj.transactionValue === 'Critical value' ? 'high' : 'low',
+          procedure_status: ctxObj.override === 'Requested override' || ctxObj.override === 'Full override' ? 'bypass_requested' : 'normal',
+          caller_relationship: (ctxObj.claimedRole || 'customer').toLowerCase()
+        };
+        setContext(mappedContext);
+        if (customFile) {
+          runDetectionWithParams(customFile, mappedContext);
+        }
+      }
+    }
+  };
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!currentFile) {
@@ -142,153 +197,89 @@ export default function App() {
   };
 
   return (
-    <div className="relative min-h-screen bg-[#2C0F12] text-[#FFF7E1] selection:bg-[#790C12] selection:text-[#FFF7E1] overflow-x-hidden font-sans">
-      {/* 1. Full-screen Loading Page Transition */}
+    <div className="relative min-h-screen bg-[#050203] text-white selection:bg-[#6B1E23] selection:text-white overflow-x-hidden font-sans">
+      {/* 1. Loading Page Transition */}
       {isLoading && (
         <LoadingPage onComplete={() => setIsLoading(false)} />
       )}
 
-      {/* Background Neural Grid Accent Layer */}
-      <div className="fixed inset-0 z-0 bg-[radial-gradient(#790C12_1px,transparent_1px)] [background-size:24px_24px] opacity-20 pointer-events-none" />
-
-      {/* 2. Glassmorphic Navigation Bar */}
-      {!isLoading && (
-        <Navbar activeTab={activeTab} setActiveTab={setActiveTab} health={health} />
+      {/* 2. Interactive 3D Geodesic Crimson Globe Viewport */}
+      {!isLoading && activeTab === 'topology' && (
+        <CrimsonGlobeViewport />
       )}
 
-      {/* 3. Main Views Router */}
+      {/* 3. Modern Glassmorphic Top Navigation Header */}
       {!isLoading && (
-        <div className="relative z-10 max-w-[1400px] mx-auto px-4 sm:px-8 py-8 space-y-12">
-          {/* VIEW 1: TOPOLOGY PAGE (Hero + Neural Topology Visualization) */}
-          {activeTab === 'topology' && (
-            <div className="space-y-12 animate-fadeIn">
-              <HeroSection
-                onOpenDashboard={() => setActiveTab('dashboard')}
-                onOpenTopology={() => {
-                  const el = document.getElementById('topology-map-section');
-                  if (el) el.scrollIntoView({ behavior: 'smooth' });
-                }}
-              />
+        <>
+          <Navbar activeTab={activeTab} setActiveTab={setActiveTab} />
+          {/* PHYSICAL NAVBAR CLEARANCE SPACER - DO NOT REMOVE */}
+          <div style={{ height: '88px', width: '100%', flexShrink: 0, display: 'block' }} aria-hidden="true" />
+        </>
+      )}
 
-              <div id="topology-map-section">
-                <TopologyVisualization onOpenRiskEngine={() => setActiveTab('dashboard')} />
-              </div>
+      {/* TELEMETRY INGEST LIQUID GLASS DIALOG MODAL */}
+      <TelemetryIngestModal
+        isOpen={isTelemetryModalOpen}
+        onClose={() => setIsTelemetryModalOpen(false)}
+        onRunEngine={handleRunEngineFromModal}
+      />
+
+      {/* 4. Main Section Views */}
+      {!isLoading && (
+        <div className="relative z-10">
+
+          
+          {/* VIEW 1: TOPOLOGY PAGE (Spatial Hero + 3D Horizon) */}
+          {activeTab === 'topology' && (
+            <div className="animate-fadeIn">
+              <HeroSection
+                onOpenDashboard={() => setIsTelemetryModalOpen(true)}
+              />
             </div>
           )}
 
-          {/* VIEW 2: RISK DASHBOARD (Operational Voice Impersonation Radar) */}
+
+          {/* VIEW 2: DEDICATED BENTO RISK DASHBOARD */}
           {activeTab === 'dashboard' && (
-            <main className="space-y-12 animate-fadeIn">
-              {/* Dashboard Header Metadata Panel */}
-              <div className="glass-panel-wine p-8 rounded-3xl border border-[#FFF7E1]/15 bg-[#2C0F12]/90 backdrop-blur-2xl flex flex-wrap items-center justify-between gap-8 shadow-2xl">
-                <div className="flex items-center gap-5">
-                  <div className="p-4 rounded-2xl bg-[#6B1E23] border border-[#790C12] text-[#FFF7E1]">
-                    <Radio className="w-8 h-8 animate-pulse text-[#FFF7E1]" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <h2 className="text-2xl sm:text-3xl font-black text-[#FFF7E1] font-['Space_Grotesk'] tracking-wide uppercase">
-                        OPERATIONAL IMPERSONATION RADAR
-                      </h2>
-                      <span className="text-xs font-mono font-bold px-3 py-1 rounded-full bg-[#6B1E23] text-[#FFF7E1] border border-[#790C12]">
-                        SESSION #SR-9982-X
-                      </span>
-                    </div>
-                    <p className="text-xs sm:text-sm text-[#FFF7E1]/80 font-mono tracking-wider mt-1 uppercase">
-                      REAL-TIME BIOMETRIC SPECTRUM & MULTIMODAL IMPERSONATION ENGINE
-                    </p>
-                  </div>
-                </div>
-
-                <div className="flex flex-wrap items-center gap-4">
-                  <div className="px-5 py-2.5 rounded-2xl bg-[#2C0F12] border border-[#FFF7E1]/15 font-mono text-xs sm:text-sm text-[#FFF7E1] flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-[#FFF7E1]" />
-                    LATENCY: <span className="font-bold">14ms</span>
-                  </div>
-                  <div className="px-5 py-2.5 rounded-2xl bg-[#2C0F12] border border-[#FFF7E1]/15 font-mono text-xs sm:text-sm text-[#FFF7E1] flex items-center gap-2">
-                    <Lock className="w-4 h-4 text-[#FFF7E1]" />
-                    AES-256 <span className="font-bold">ENCRYPTED</span>
-                  </div>
-                  <div className="px-5 py-2.5 rounded-2xl bg-[#6B1E23] border border-[#790C12] font-mono text-xs sm:text-sm text-[#FFF7E1] flex items-center gap-2">
-                    <Zap className="w-4 h-4 text-[#FFF7E1] animate-pulse" />
-                    STREAM: <span className="font-bold">ACTIVE</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Real-time Audio Spectrum & Visualizer Component */}
-              <AudioVisualizer audioFile={currentFile} isAnalyzing={loading} />
-
-              {/* Scenario Matrix Presets */}
-              <DemoPresetLoader onSelectPreset={handleSelectPreset} />
-
-              {/* Audio Upload & Context Risk Form */}
-              <form onSubmit={handleSubmit} className="space-y-12">
-                <AudioUpload
-                  currentFile={currentFile}
-                  setCurrentFile={setCurrentFile}
-                  referenceFile={referenceFile}
-                  setReferenceFile={setReferenceFile}
-                />
-
-                <ContextForm context={context} setContext={setContext} />
-
-                {error && (
-                  <div className="p-6 rounded-3xl bg-[#790C12] border border-[#FFF7E1]/30 text-[#FFF7E1] text-base font-bold flex items-center gap-4 shadow-2xl font-mono">
-                    <ShieldAlert className="w-7 h-7 text-[#FFF7E1] shrink-0" />
-                    {error}
-                  </div>
-                )}
-
-                <div className="flex justify-end pt-4">
-                  <button
-                    type="submit"
-                    disabled={loading || !currentFile}
-                    className={`w-full sm:w-auto flex items-center justify-center gap-4 px-12 py-6 rounded-full font-black text-lg sm:text-xl font-['Space_Grotesk'] tracking-wider uppercase transition-all duration-300 cursor-pointer shadow-2xl ${
-                      loading || !currentFile
-                        ? 'bg-[#2C0F12] text-[#FFF7E1]/40 cursor-not-allowed border border-[#FFF7E1]/10'
-                        : 'bg-[#790C12] hover:bg-[#6B1E23] text-[#FFF7E1] border border-[#FFF7E1]/20 hover:scale-105 active:scale-95 shadow-[0_0_40px_rgba(121,12,18,0.7)]'
-                    }`}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-7 h-7 animate-spin text-[#FFF7E1]" />
-                        ANALYZING BIOMETRIC FREQUENCY VECTOR...
-                      </>
-                    ) : (
-                      <>
-                        <Activity className="w-7 h-7 text-[#FFF7E1]" />
-                        EXECUTE SWARRAKSHAK RISK ENGINE
-                        <ArrowRight className="w-7 h-7" />
-                      </>
-                    )}
-                  </button>
-                </div>
-              </form>
-
-              {/* Risk Engine Results Card */}
-              {result && <ResultCard result={result} />}
-            </main>
+            <div className="animate-fadeIn">
+              <BentoRiskDashboard
+                setActiveTab={setActiveTab}
+                currentFile={currentFile}
+                setCurrentFile={setCurrentFile}
+                referenceFile={referenceFile}
+                setReferenceFile={setReferenceFile}
+                context={context}
+                setContext={setContext}
+                loading={loading}
+                error={error}
+                result={result}
+                handleSubmit={handleSubmit}
+                handleSelectPreset={handleSelectPreset}
+              />
+            </div>
           )}
 
           {/* VIEW 3: ANALYST HISTORY */}
           {activeTab === 'analyst' && (
-            <main className="animate-fadeIn">
+            <div className="animate-fadeIn">
               <AnalystPortal />
-            </main>
+            </div>
           )}
 
           {/* VIEW 4: OVERVIEW PREVIEW */}
           {activeTab === 'overview' && (
-            <main className="animate-fadeIn">
+            <div className="animate-fadeIn">
               <InfoOverview />
-            </main>
+            </div>
           )}
         </div>
       )}
     </div>
   );
 }
+
+
+
 
 
 
