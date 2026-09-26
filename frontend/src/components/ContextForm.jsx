@@ -86,11 +86,11 @@ export default function ContextForm({ context, setContext, handleRunDetection })
   };
 
   const contextSignals = {
-    callerId: valueToDisplayMap.callerId[context?.caller_number_status] || 'Unknown caller',
-    urgency: valueToDisplayMap.urgency[context?.request_urgency] || 'Urgent',
-    transactionValue: valueToDisplayMap.transactionValue[context?.transaction_value] || 'Critical value',
-    protocolOverride: valueToDisplayMap.protocolOverride[context?.procedure_status] || 'Requested override',
-    roleRelationship: valueToDisplayMap.roleRelationship[context?.caller_relationship] || 'Executive',
+    callerId: valueToDisplayMap.callerId[context?.caller_number_status] || 'Verified contact',
+    urgency: valueToDisplayMap.urgency[context?.request_urgency] || 'Routine',
+    transactionValue: valueToDisplayMap.transactionValue[context?.transaction_value] || 'No transaction',
+    protocolOverride: valueToDisplayMap.protocolOverride[context?.procedure_status] || 'No override',
+    roleRelationship: valueToDisplayMap.roleRelationship[context?.caller_relationship] || 'Customer',
   };
 
   return (
@@ -145,7 +145,7 @@ export default function ContextForm({ context, setContext, handleRunDetection })
             title: 'Caller Identification Status',
             desc: 'Select appropriate telemetry tag',
             options: ['Verified contact', 'Known executive', 'Unknown caller', 'Impersonation suspected'],
-            current: contextSignals?.callerId || 'Unknown caller'
+            current: contextSignals?.callerId || 'Verified contact'
           },
           {
             key: 'urgency',
@@ -153,7 +153,7 @@ export default function ContextForm({ context, setContext, handleRunDetection })
             title: 'Request Time Urgency',
             desc: 'Select the level of time pressure',
             options: ['Routine', 'Time-sensitive', 'Urgent', 'Critical'],
-            current: contextSignals?.urgency || 'Urgent'
+            current: contextSignals?.urgency || 'Routine'
           },
           {
             key: 'transactionValue',
@@ -161,7 +161,7 @@ export default function ContextForm({ context, setContext, handleRunDetection })
             title: 'Financial Transaction Value',
             desc: 'Select transaction exposure level',
             options: ['No transaction', 'Low value', 'High value', 'Critical value'],
-            current: contextSignals?.transactionValue || 'Critical value'
+            current: contextSignals?.transactionValue || 'No transaction'
           },
           {
             key: 'protocolOverride',
@@ -169,7 +169,7 @@ export default function ContextForm({ context, setContext, handleRunDetection })
             title: 'Authorization Protocol Override',
             desc: 'Identify whether standard controls were bypassed',
             options: ['No override', 'Requested override', 'Partial override', 'Full override'],
-            current: contextSignals?.protocolOverride || 'Requested override'
+            current: contextSignals?.protocolOverride || 'No override'
           },
           {
             key: 'roleRelationship',
@@ -177,7 +177,7 @@ export default function ContextForm({ context, setContext, handleRunDetection })
             title: 'Claimed Identity / Role Relationship',
             desc: "Select the caller's claimed relationship",
             options: ['Employee', 'Executive', 'Vendor', 'Customer', 'Unknown entity'],
-            current: contextSignals?.roleRelationship || 'Executive'
+            current: contextSignals?.roleRelationship || 'Customer'
           }
         ].map((card) => (
           <div

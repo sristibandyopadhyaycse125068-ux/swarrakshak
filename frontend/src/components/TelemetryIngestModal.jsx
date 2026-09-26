@@ -132,13 +132,40 @@ const MULTILINGUAL_NEGATIONS = [
   /\b(taka|poisa|password|otp|bank|card)\s+(dio na|deben na|pathio na|pathaben na|lagbe na)\b/i
 ];
 
-// --- MULTILINGUAL URGENCY DICTIONARY ---
-const MULTILINGUAL_URGENCY_TERMS = [
-  'urgent', 'emergency', 'immediately', 'right now', 'quick', 'asap', 'fast',
-  'जल्दी', 'तुरंत', 'इमरजेंसी', 'अर्जेंट', 'अभी',
-  'জরুরী', 'এখনই', 'তারাতারি', 'জলদি',
-  'jaldi', 'turant', 'abhi', 'ekkhoni', 'taratari', 'joruri'
-];
+// --- STRICT MULTILINGUAL CONTEXT KEYWORD DETECTOR ---
+const FINANCIAL_REGEX_EN = /\b(money|bank|account|otp|password|pin|card|cvv|transfer|funds?|cash|credit|wire|rupees?|paise|khata|taka)\b/i;
+const FINANCIAL_REGEX_UNICODE = /(पैसे|पैसा|बैंक|खाता|ओटीपी|पासवर्ड|पिन|रुपये|रुपया|टাকা|পয়সা|ব্যাংক|ব্যাঙ্ক|অ্যাকাউন্ট)/;
+
+const URGENCY_REGEX_EN = /\b(urgent|urgently|emergency|immediately|right now|quick|fast|hurry|jaldi|turant|asap)\b/i;
+const URGENCY_REGEX_UNICODE = /(जल्दी|तुरंत|इमरजेंसी|अर्जेंट|अभी|জরুরী|এখনই|তারাতারি|জলদি)/;
+
+export const detectContextFromTranscript = (text = '') => {
+  if (!text || typeof text !== 'string') {
+    return {
+      urgency: 'Routine',
+      transactionValue: 'No transaction'
+    };
+  }
+
+  const normalized = text.toLowerCase().trim();
+
+  // 1. Proximity Negation Check
+  const isNegated = MULTILINGUAL_NEGATIONS.some(pattern => pattern.test(normalized));
+
+  // 2. Financial Token Check
+  const hasFinancialToken = FINANCIAL_REGEX_EN.test(normalized) || FINANCIAL_REGEX_UNICODE.test(normalized);
+  const isFinancialRisk = hasFinancialToken && !isNegated;
+
+  // 3. Urgency Token Check
+  const isUrgent = URGENCY_REGEX_EN.test(normalized) || URGENCY_REGEX_UNICODE.test(normalized);
+
+  return {
+    isFinancialRisk,
+    isUrgent,
+    urgency: isUrgent ? 'Time-sensitive' : 'Routine',
+    transactionValue: isFinancialRisk ? 'High value' : 'No transaction'
+  };
+};
 
 export const analyzeLiveSpeechIntent = (rawTranscript) => {
   if (!rawTranscript || typeof rawTranscript !== 'string') {
@@ -150,23 +177,12 @@ export const analyzeLiveSpeechIntent = (rawTranscript) => {
     };
   }
 
-  // Normalize transcript (lowercase for Latin scripts, keep native Unicode scripts intact)
-  const normalized = rawTranscript.toLowerCase().trim();
+  const detected = detectContextFromTranscript(rawTranscript);
 
-  // 1. Check for explicit negations first (e.g. "পাসওয়ার্ড দেবেন না" or "पैसे मत भेजो")
-  const isNegated = MULTILINGUAL_NEGATIONS.some(pattern => pattern.test(normalized));
-
-  // 2. Check for positive credential / financial trigger terms
-  const matchedTerm = FINANCIAL_AND_CREDENTIAL_TERMS.find(term => normalized.includes(term.toLowerCase()));
-
-  // 3. Check for urgency tokens
-  const isUrgent = MULTILINGUAL_URGENCY_TERMS.some(term => normalized.includes(term.toLowerCase()));
-
-  // 4. If a financial/credential keyword is present AND not negated -> Trigger 36/100 MEDIUM RISK
-  if (matchedTerm && !isNegated) {
+  if (detected.isFinancialRisk) {
     return {
       isFinancialRisk: true,
-      isUrgent,
+      isUrgent: detected.isUrgent,
       category: 'AUTHENTIC_FINANCIAL_REQUEST',
       acousticScore: 2,    // 2/40
       biometricScore: 4,   // 4/30
@@ -176,19 +192,19 @@ export const analyzeLiveSpeechIntent = (rawTranscript) => {
       statusLabel: 'Elevated Risk / Verification Recommended',
       neuralSynthesisLevel: 'LOW',
       callerIdStatus: 'Verified contact',
-      urgencyStatus: isUrgent ? 'Time-sensitive' : 'Routine',
-      transactionValue: 'High value',
+      urgencyStatus: detected.urgency,
+      transactionValue: detected.transactionValue,
       exposureLabel: 'Critical credentials requested',
       analystDisposition: 'FLAGGED FOR REVIEW',
-      matchedRule: matchedTerm
+      matchedRule: 'Financial/credential token detected'
     };
   }
 
   // Otherwise: Verified safe authentic human speech (8/100)
   return {
     ...getGenuineHumanTelemetry(),
-    isUrgent,
-    urgencyStatus: isUrgent ? 'Time-sensitive' : 'Routine',
+    isUrgent: detected.isUrgent,
+    urgencyStatus: detected.urgency,
     transactionValue: 'No transaction'
   };
 };
@@ -469,12 +485,23 @@ export default function TelemetryIngestModal({ isOpen, onClose, onRunEngine }) {
   const [pendingTelemetry, setPendingTelemetry] = useState(null);
 
   const [selectedContext, setSelectedContext] = useState({
-    callerId: 'Unknown caller',
+    callerId: 'Verified contact',
     urgency: 'Routine',
     transactionValue: 'No transaction',
     override: 'No override',
     claimedRole: 'Customer'
   });
+
+  // Reactive Context Parsing Effect: Automatically sync context pills whenever transcript changes
+  useEffect(() => {
+    if (pendingTelemetry?.category === 'CLONE') return;
+    const detected = detectContextFromTranscript(liveTranscript);
+    setSelectedContext(prev => ({
+      ...prev,
+      urgency: detected.urgency,
+      transactionValue: detected.transactionValue
+    }));
+  }, [liveTranscript, pendingTelemetry?.category]);
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
